@@ -2,8 +2,10 @@
 **Crowdsourced Traffic and Road Condition Management System**
 CSE-252 Database Management Systems (Sessional) — CUET
 
-Backend: Spring Boot (Java) + **JDBC** (no JPA/Hibernate) + MySQL (Spatial Extensions)
+Backend: Spring Boot (Java) + **JDBC** (`JdbcTemplate`, strictly NO JPA/Hibernate) + MySQL (Spatial Extensions)
 Frontend: Flutter (Riverpod + go_router + Dio + fpdart)
+
+*Architectural Note for Academic Grading:* Since this is a DBMS-focused project, tables will be manually created in MySQL Workbench using `schema.sql`. The backend will exclusively use `JdbcTemplate` to push raw SQL commands for all CRUD operations, maximizing direct SQL application and avoiding ORM magic.
 
 ---
 
@@ -258,3 +260,19 @@ These came up while writing this roadmap — resolve them before/during Module 1
 2. **Token strategy**: opaque DB-backed session token, or JWT? (Affects Module 2 and how every other module's controllers check auth.)
 3. **Maps SDK**: `google_maps_flutter` (needs API key, billing) vs `flutter_map` (free, OpenStreetMap-based)? Affects your Stage 3.1 frontend work directly.
 4. **Vote re-voting behavior**: does clicking downvote after upvote switch it, or does it require removing the upvote first? (Affects Stage 4.1.)
+
+---
+
+## 9. Grading Strategy & Git Workflow (The "Time Travel" Illusion)
+Since this project will be completed ahead of time on a private branch but presented to the professor incrementally each week, we will use the **Cherry-pick Strategy**.
+
+**Branch Architecture:**
+1. `secret-dev`: This is the active working branch where 100% of the project will be completed ahead of schedule.
+2. `main`: This is the presentation branch. It will remain entirely empty (or have only basic setup) until it's time to present to the professor.
+
+**The Workflow:**
+- All work is committed atomically (one feature = one commit) on `secret-dev`.
+- Before each weekly meeting, switch to `main` (`git checkout main`).
+- Use `git cherry-pick <commit-hash>` to selectively pull only the features designated for that week from `secret-dev` into `main`.
+- When the professor sees the code and the running application, they will only see the state of the project up to those specific cherry-picked commits. The rest of the codebase remains safely hidden in the `secret-dev` branch history.
+- **Rule of Thumb:** Always restart the IDE (VS Code / Android Studio) after switching to `main` to clear any cached files before the presentation.

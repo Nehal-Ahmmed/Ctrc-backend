@@ -1,0 +1,17 @@
+com\ctrc\report\application\ReportService.class
+com\ctrc\CtrcBackendApplication.class
+com\ctrc\report\domain\ReportRepository.class
+com\ctrc\report\infrastructure\ReportRepositoryImpl.class
+com\ctrc\report\presentation\ReportController.class
+com\ctrc\core\presentation\ApiResponse.class
+com\ctrc\core\presentation\GlobalExceptionHandler.class
+com\ctrc\core\domain\exceptions\ValidationException.class
+com\ctrc\core\presentation\HealthController.class
+com\ctrc\location\infrastructure\LocationRepositoryImpl.class
+com\ctrc\location\domain\LocationRepository.class
+com\ctrc\report\application\dto\CreateReportRequest.class
+com\ctrc\report\domain\Report.class
+com\ctrc\core\config\CorsConfig.class
+com\ctrc\location\domain\Location.class
+com\ctrc\core\domain\exceptions\ConflictException.class
+com\ctrc\core\domain\exceptions\ResourceNotFoundException.class
