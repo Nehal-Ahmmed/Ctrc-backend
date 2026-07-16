@@ -15,3 +15,13 @@ D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\report\domai
 D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\report\domain\ReportRepository.java
 D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\report\infrastructure\ReportRepositoryImpl.java
 D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\report\presentation\ReportController.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\application\dto\AuthResponse.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\application\dto\LoginRequest.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\application\dto\SignupRequest.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\application\dto\UserUpdateDto.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\application\UserService.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\domain\User.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\domain\UserRepository.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\infrastructure\UserRepositoryImpl.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\presentation\AuthController.java
+D:\flutter projects\CTRC system\Ctrc-backend\src\main\java\com\ctrc\user\presentation\UserController.java

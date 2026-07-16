@@ -5,6 +5,7 @@ import com.ctrc.core.domain.exceptions.ResourceNotFoundException;
 import com.ctrc.core.domain.exceptions.ValidationException;
 import com.ctrc.user.application.dto.LoginRequest;
 import com.ctrc.user.application.dto.SignupRequest;
+import com.ctrc.user.application.dto.UserUpdateDto;
 import com.ctrc.user.domain.User;
 import com.ctrc.user.domain.UserRepository;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,24 @@ public class UserService {
             throw new ResourceNotFoundException("Invalid email or password"); // Vague error for security
         }
 
+        return user;
+    }
+
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    @Transactional
+    public User updateProfile(String email, UserUpdateDto dto) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setName(dto.getName());
+        user.setAddress(dto.getAddress());
+        user.setImageUrl(dto.getImageUrl());
+
+        userRepository.update(user);
         return user;
     }
 }

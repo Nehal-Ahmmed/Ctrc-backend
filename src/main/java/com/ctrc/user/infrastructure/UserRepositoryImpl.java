@@ -49,8 +49,9 @@ public class UserRepositoryImpl implements UserRepository {
             return ps;
         }, keyHolder);
 
-        if (keyHolder.getKey() != null) {
-            user.setId(keyHolder.getKey().longValue());
+        Number key = keyHolder.getKey();
+        if (key != null) {
+            user.setId(key.longValue());
         }
         return user;
     }
@@ -60,5 +61,18 @@ public class UserRepositoryImpl implements UserRepository {
         String sql = "SELECT * FROM user WHERE email = ?";
         List<User> users = jdbcTemplate.query(sql, rowMapper, email);
         return users.stream().findFirst();
+    }
+
+    @Override
+    public Optional<User> findById(Long id) {
+        String sql = "SELECT * FROM user WHERE user_id = ?";
+        List<User> users = jdbcTemplate.query(sql, rowMapper, id);
+        return users.stream().findFirst();
+    }
+
+    @Override
+    public void update(User user) {
+        String sql = "UPDATE user SET name = ?, address = ?, image_url = ? WHERE user_id = ?";
+        jdbcTemplate.update(sql, user.getName(), user.getAddress(), user.getImageUrl(), user.getId());
     }
 }

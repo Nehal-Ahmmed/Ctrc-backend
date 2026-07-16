@@ -1,5 +1,8 @@
-# CTRC — Project Roadmap
-**Crowdsourced Traffic and Road Condition Management System**
+# Project Title: Crowdsourced Traffic & Road Condition Reporting System
+
+## Description
+Our project is a crowdsourced traffic and road condition tracker. Users can drop real-time reports about issues like accidents, traffic jams, and roadblocks directly onto a city map. To ensure the information is accurate and up-to-date, the community validates these reports through upvotes and downvotes. The system automatically filters out duplicates and reduces the visibility of older, less relevant posts over time. Behind the scenes, this relies on a well-organized database that uses features like triggers and stored procedures to seamlessly update scores, manage community voting, and keep the data clean. This setup allows us to run effective queries that highlight the city's worst traffic hotspots and provide reliable updates to users on the road.
+
 CSE-252 Database Management Systems (Sessional) — CUET
 
 Backend: Spring Boot (Java) + **JDBC** (`JdbcTemplate`, strictly NO JPA/Hibernate) + MySQL (Spatial Extensions)
