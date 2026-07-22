@@ -5,6 +5,7 @@ import com.ctrc.report.domain.ReportRepository;
 import com.ctrc.report.domain.SubReport;
 import com.ctrc.report.domain.SubReportRepository;
 import com.ctrc.report.domain.IncidentGroupRepository;
+import com.ctrc.report.domain.SavedReportRepository;
 import com.ctrc.report.application.dto.CreateReportRequest;
 import com.ctrc.core.domain.exceptions.ResourceNotFoundException;
 import com.ctrc.location.domain.Location;
@@ -23,19 +24,22 @@ public class ReportService {
     private final IncidentGroupRepository incidentGroupRepository;
     private final com.ctrc.report.domain.VoteRepository voteRepository;
     private final com.ctrc.report.domain.CommentRepository commentRepository;
+    private final SavedReportRepository savedReportRepository;
 
     public ReportService(ReportRepository reportRepository, 
                          LocationRepository locationRepository,
                          SubReportRepository subReportRepository,
                          IncidentGroupRepository incidentGroupRepository,
                          com.ctrc.report.domain.VoteRepository voteRepository,
-                         com.ctrc.report.domain.CommentRepository commentRepository) {
+                         com.ctrc.report.domain.CommentRepository commentRepository,
+                         SavedReportRepository savedReportRepository) {
         this.reportRepository = reportRepository;
         this.locationRepository = locationRepository;
         this.subReportRepository = subReportRepository;
         this.incidentGroupRepository = incidentGroupRepository;
         this.voteRepository = voteRepository;
         this.commentRepository = commentRepository;
+        this.savedReportRepository = savedReportRepository;
     }
 
     @Transactional
@@ -88,6 +92,24 @@ public class ReportService {
     public List<Report> getNearbyReports(Double latitude, Double longitude, Double radiusInKm, String category) {
         Double radiusInMeters = radiusInKm * 1000;
         return reportRepository.findNearby(latitude, longitude, radiusInMeters, category);
+    }
+
+    public List<Report> getUserReports(Long userId) {
+        return reportRepository.findByUserId(userId);
+    }
+
+    public List<Report> getSavedReports(Long userId) {
+        return reportRepository.findSavedByUserId(userId);
+    }
+
+    @Transactional
+    public void saveReport(Long userId, Long reportId) {
+        savedReportRepository.save(userId, reportId);
+    }
+
+    @Transactional
+    public void unsaveReport(Long userId, Long reportId) {
+        savedReportRepository.unsave(userId, reportId);
     }
 
     @Transactional

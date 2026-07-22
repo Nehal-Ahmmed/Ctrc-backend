@@ -151,4 +151,25 @@ public class ReportRepositoryImpl implements ReportRepository {
         String sql = "UPDATE report SET comment_count = comment_count + ? WHERE report_id = ?";
         jdbcTemplate.update(sql, delta, reportId);
     }
+
+    @Override
+    public List<Report> findByUserId(Long userId) {
+        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
+                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
+                + "from report r join location l on r.location_id = l.location_id "
+                + "where r.user_id = ? "
+                + "order by r.created_at desc";
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, userId);
+    }
+
+    @Override
+    public List<Report> findSavedByUserId(Long userId) {
+        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
+                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
+                + "from report r join location l on r.location_id = l.location_id "
+                + "join saved_report sr on sr.report_id = r.report_id "
+                + "where sr.user_id = ? "
+                + "order by sr.saved_at desc";
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, userId);
+    }
 }

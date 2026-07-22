@@ -104,3 +104,14 @@ create index idx_comment_report on comment(report_id);
 create index idx_comment_subreport on comment(sub_report_id);
 create unique index idx_vote_user_report on vote(user_id, report_id);
 create unique index idx_vote_user_subreport on vote(user_id, sub_report_id);
+
+-- saved_report table
+create table saved_report (
+    saved_report_id bigint auto_increment primary key,
+    user_id bigint not null,
+    report_id bigint not null,
+    saved_at timestamp default current_timestamp,
+    foreign key (user_id) references user(user_id),
+    foreign key (report_id) references report(report_id),
+    unique(user_id, report_id)
+);

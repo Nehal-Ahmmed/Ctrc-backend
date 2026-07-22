@@ -18,4 +18,6 @@ public interface ReportRepository {
     void updateUpvotes(Long reportId, int delta);
     void updateDownvotes(Long reportId, int delta);
     void updateCommentCount(Long reportId, int delta);
+    List<Report> findByUserId(Long userId);
+    List<Report> findSavedByUserId(Long userId);
 }

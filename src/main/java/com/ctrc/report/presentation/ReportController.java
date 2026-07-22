@@ -2,6 +2,7 @@ package com.ctrc.report.presentation;
 
 import com.ctrc.report.application.ReportService;
 import com.ctrc.report.domain.Report;
+import com.ctrc.report.application.dto.CommentRequest;
 import com.ctrc.report.application.dto.CreateReportRequest;
 import com.ctrc.core.presentation.ApiResponse;
 import jakarta.validation.Valid;
@@ -56,12 +57,35 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/comments")
-    public ApiResponse<Object> addComment(
-            @PathVariable("id") Long id,
-            @RequestHeader("X-User-Id") Long userId,
-            @Valid @RequestBody com.ctrc.report.application.dto.CommentRequest request) {
-        reportService.commentReport(id, userId, request.getContent());
-        return ApiResponse.success("Comment added successfully");
+    public ApiResponse<Void> commentReport(@PathVariable("id") Long reportId,
+                                           @RequestHeader("X-User-Id") Long userId,
+                                           @RequestBody CommentRequest request) {
+        reportService.commentReport(reportId, userId, request.getContent());
+        return ApiResponse.success(null);
+    }
+
+    @GetMapping("/my-reports")
+    public ApiResponse<List<Report>> getMyReports(@RequestHeader("X-User-Id") Long userId) {
+        return ApiResponse.success(reportService.getUserReports(userId));
+    }
+
+    @GetMapping("/saved")
+    public ApiResponse<List<Report>> getSavedReports(@RequestHeader("X-User-Id") Long userId) {
+        return ApiResponse.success(reportService.getSavedReports(userId));
+    }
+
+    @PostMapping("/{id}/save")
+    public ApiResponse<Void> saveReport(@PathVariable("id") Long reportId,
+                                        @RequestHeader("X-User-Id") Long userId) {
+        reportService.saveReport(userId, reportId);
+        return ApiResponse.success(null);
+    }
+
+    @DeleteMapping("/{id}/save")
+    public ApiResponse<Void> unsaveReport(@PathVariable("id") Long reportId,
+                                          @RequestHeader("X-User-Id") Long userId) {
+        reportService.unsaveReport(userId, reportId);
+        return ApiResponse.success(null);
     }
 
     @GetMapping("/{id}/comments")
