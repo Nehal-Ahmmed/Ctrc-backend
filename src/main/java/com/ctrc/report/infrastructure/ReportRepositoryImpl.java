@@ -105,4 +105,14 @@ public class ReportRepositoryImpl implements ReportRepository {
                 + "order by r.created_at desc";
         return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION);
     }
+
+    @Override
+    public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters) {
+        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city "
+                + "from report r join location l on r.location_id = l.location_id "
+                + "where ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? "
+                + "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc";
+        // The POINT() function takes (longitude, latitude)
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, longitude, latitude, radiusInMeters, longitude, latitude);
+    }
 }

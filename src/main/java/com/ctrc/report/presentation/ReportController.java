@@ -36,4 +36,12 @@ public class ReportController {
     public ApiResponse<List<Report>> getAllReports() {
         return ApiResponse.success(reportService.getAllReports());
     }
+
+    @GetMapping("/nearby")
+    public ApiResponse<List<Report>> getNearbyReports(
+            @RequestParam("lat") Double lat,
+            @RequestParam("lng") Double lng,
+            @RequestParam(value = "radius", defaultValue = "5.0") Double radius) {
+        return ApiResponse.success(reportService.getNearbyReports(lat, lng, radius));
+    }
 }

@@ -54,4 +54,9 @@ public class ReportService {
     public List<Report> getAllReports() {
         return ReportRepository.findAll();
     }
+
+    public List<Report> getNearbyReports(Double latitude, Double longitude, Double radiusInKm) {
+        Double radiusInMeters = radiusInKm * 1000;
+        return ReportRepository.findNearby(latitude, longitude, radiusInMeters);
+    }
 }

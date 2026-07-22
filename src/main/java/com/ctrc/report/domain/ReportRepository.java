@@ -13,4 +13,6 @@ public interface ReportRepository {
     Optional<Report> findByIdWithLocation(Long reportId);
 
     List<Report> findAll();
+
+    List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters);
 }
