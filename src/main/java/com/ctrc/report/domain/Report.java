@@ -15,6 +15,7 @@ public class Report {
     private String category;
     private Integer upvoteCount;
     private Integer downvoteCount;
+    private Integer commentCount;
     private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
 
@@ -86,6 +87,14 @@ public class Report {
 
     public void setDownvoteCount(Integer downvoteCount) {
         this.downvoteCount = downvoteCount;
+    }
+
+    public Integer getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(Integer commentCount) {
+        this.commentCount = commentCount;
     }
 
     public LocalDateTime getExpiresAt() {

@@ -34,6 +34,14 @@ public class ReportRepositoryImpl implements ReportRepository {
         report.setCategory(rs.getString("category"));
         report.setUpvoteCount(rs.getInt("upvote_count"));
         report.setDownvoteCount(rs.getInt("downvote_count"));
+        
+        try {
+            int commentCount = rs.getInt("comment_count");
+            report.setCommentCount(commentCount);
+        } catch (java.sql.SQLException e) {
+            // comment_count column might not be present in all queries
+            report.setCommentCount(0);
+        }
 
         Timestamp expiresAt = rs.getTimestamp("expires_at");
         if (expiresAt != null) {
@@ -84,14 +92,15 @@ public class ReportRepositoryImpl implements ReportRepository {
 
     @Override
     public Optional<Report> findById(Long reportId) {
-        String sql = "select * from report where report_id = ?";
+        String sql = "select r.*, (select count(*) from comment c where c.report_id = r.report_id) as comment_count from report r where r.report_id = ?";
         List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER, reportId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     @Override
     public Optional<Report> findByIdWithLocation(Long reportId) {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city "
+        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
+                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
                 + "from report r join location l on r.location_id = l.location_id "
                 + "where r.report_id = ?";
         List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, reportId);
@@ -100,7 +109,8 @@ public class ReportRepositoryImpl implements ReportRepository {
 
     @Override
     public List<Report> findAll() {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city "
+        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
+                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
                 + "from report r join location l on r.location_id = l.location_id "
                 + "order by r.created_at desc";
         return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION);
@@ -108,7 +118,8 @@ public class ReportRepositoryImpl implements ReportRepository {
 
     @Override
     public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters) {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city "
+        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
+                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
                 + "from report r join location l on r.location_id = l.location_id "
                 + "where ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? "
                 + "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc";
