@@ -11,13 +11,13 @@ public class CreateReportRequest {
     @NotNull(message = "is required")
     private Long userId;
 
-    @NotBlank(message = "is required")
     private String title;
 
     private String description;
 
-    @NotBlank(message = "is required")
     private String category;
+    
+    private Long parentReportId;
 
     @NotNull(message = "is required")
     private Double latitude;
@@ -90,5 +90,13 @@ public class CreateReportRequest {
 
     public void setCity(String city) {
         this.city = city;
+    }
+
+    public Long getParentReportId() {
+        return parentReportId;
+    }
+
+    public void setParentReportId(Long parentReportId) {
+        this.parentReportId = parentReportId;
     }
 }

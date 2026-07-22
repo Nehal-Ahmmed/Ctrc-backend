@@ -1,5 +1,4 @@
-create database if not exists ctrcdb;
-use ctrcdb;
+-- Tables will be created in the currently selected database (defaultdb)
 
 -- user table
 create table user (

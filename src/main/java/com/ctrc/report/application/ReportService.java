@@ -2,6 +2,9 @@ package com.ctrc.report.application;
 
 import com.ctrc.report.domain.Report;
 import com.ctrc.report.domain.ReportRepository;
+import com.ctrc.report.domain.SubReport;
+import com.ctrc.report.domain.SubReportRepository;
+import com.ctrc.report.domain.IncidentGroupRepository;
 import com.ctrc.report.application.dto.CreateReportRequest;
 import com.ctrc.core.domain.exceptions.ResourceNotFoundException;
 import com.ctrc.location.domain.Location;
@@ -14,49 +17,70 @@ import java.util.List;
 @Service
 public class ReportService {
 
-    private final ReportRepository ReportRepository;
-    private final LocationRepository LocationRepository;
+    private final ReportRepository reportRepository;
+    private final LocationRepository locationRepository;
+    private final SubReportRepository subReportRepository;
+    private final IncidentGroupRepository incidentGroupRepository;
 
-    public ReportService(ReportRepository ReportRepository, LocationRepository LocationRepository) {
-        this.ReportRepository = ReportRepository;
-        this.LocationRepository = LocationRepository;
+    public ReportService(ReportRepository reportRepository, 
+                         LocationRepository locationRepository,
+                         SubReportRepository subReportRepository,
+                         IncidentGroupRepository incidentGroupRepository) {
+        this.reportRepository = reportRepository;
+        this.locationRepository = locationRepository;
+        this.subReportRepository = subReportRepository;
+        this.incidentGroupRepository = incidentGroupRepository;
     }
 
-    // creates the location row then the report row in one transaction
     @Transactional
-    public Report createReport(CreateReportRequest request) {
+    public Object createReport(CreateReportRequest request) {
         Location location = new Location();
         location.setLatitude(request.getLatitude());
         location.setLongitude(request.getLongitude());
         location.setAddress(request.getAddress());
         location.setCity(request.getCity());
 
-        Long locationId = LocationRepository.insert(location);
+        Long locationId = locationRepository.insert(location);
 
-        Report report = new Report();
-        report.setUserId(request.getUserId());
-        report.setLocationId(locationId);
-        report.setTitle(request.getTitle());
-        report.setDescription(request.getDescription());
-        report.setCategory(request.getCategory());
+        if (request.getParentReportId() != null) {
+            SubReport subReport = new SubReport();
+            subReport.setUserId(request.getUserId());
+            subReport.setReportId(request.getParentReportId());
+            subReport.setLocationId(locationId);
+            subReport.setDescription(request.getDescription());
+            
+            subReportRepository.insert(subReport);
+            
+            return reportRepository.findByIdWithLocation(request.getParentReportId())
+                    .orElseThrow(() -> new ResourceNotFoundException("parent report not found"));
+        } else {
+            Report report = new Report();
+            report.setUserId(request.getUserId());
+            report.setLocationId(locationId);
+            report.setTitle(request.getTitle());
+            report.setDescription(request.getDescription());
+            report.setCategory(request.getCategory());
 
-        Long reportId = ReportRepository.insert(report);
+            Long reportId = reportRepository.insert(report);
+            
+            incidentGroupRepository.insert(reportId, request.getTitle());
 
-        return ReportRepository.findByIdWithLocation(reportId)
-                .orElseThrow(() -> new ResourceNotFoundException("report not found after creation"));
+            return reportRepository.findByIdWithLocation(reportId)
+                    .orElseThrow(() -> new ResourceNotFoundException("report not found after creation"));
+        }
     }
 
     public Report getReportById(Long reportId) {
-        return ReportRepository.findByIdWithLocation(reportId)
+        return reportRepository.findByIdWithLocation(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("report not found with id " + reportId));
     }
 
     public List<Report> getAllReports() {
-        return ReportRepository.findAll();
+        return reportRepository.findAll();
     }
 
     public List<Report> getNearbyReports(Double latitude, Double longitude, Double radiusInKm) {
         Double radiusInMeters = radiusInKm * 1000;
-        return ReportRepository.findNearby(latitude, longitude, radiusInMeters);
+        return reportRepository.findNearby(latitude, longitude, radiusInMeters);
     }
 }

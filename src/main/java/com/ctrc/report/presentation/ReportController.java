@@ -22,8 +22,8 @@ public class ReportController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<Report> createReport(@Valid @RequestBody CreateReportRequest request) {
-        Report report = reportService.createReport(request);
+    public ApiResponse<Object> createReport(@Valid @RequestBody CreateReportRequest request) {
+        Object report = reportService.createReport(request);
         return ApiResponse.success(report);
     }
 
