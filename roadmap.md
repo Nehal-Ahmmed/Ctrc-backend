@@ -9,6 +9,7 @@ Backend: Spring Boot (Java) + **JDBC** (`JdbcTemplate`, strictly NO JPA/Hibernat
 Frontend: Flutter (Riverpod + go_router + Dio + fpdart)
 
 *Architectural Note for Academic Grading:* Since this is a DBMS-focused project, tables will be manually created in MySQL Workbench using `schema.sql`. The backend will exclusively use `JdbcTemplate` to push raw SQL commands for all CRUD operations, maximizing direct SQL application and avoiding ORM magic.
+*Strict Database Rule:* Joto tuku possible, logic should be pushed to MySQL instead of the backend app layer. This includes using SQL for data filtering, aggregation, optimal SELECT/UPDATE operations, and utilizing database features like Triggers and Stored Procedures. The backend should not fetch all data to filter it; the database should handle it.
 
 ---
 

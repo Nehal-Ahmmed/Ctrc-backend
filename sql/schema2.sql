@@ -11,6 +11,7 @@ insert into comment (user_id, report_id, sub_report_id, content) values (1, 1, n
 
 insert into vote (user_id, report_id, sub_report_id, vote_type) values (1, 1, null, 'up');
 
+-- user 2
 insert into user (name, password, email, address, image_url) values ('Mehedi Hasan', '123456', 'mehedi@gmail.com', 'Mirpur, Dhaka', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d');
 
 insert into location (longitude, latitude, address, city) values (90.387200, 23.756100, 'Farmgate, Dhaka', 'Dhaka');
