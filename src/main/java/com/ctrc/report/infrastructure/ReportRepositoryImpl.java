@@ -87,7 +87,8 @@ public class ReportRepositoryImpl implements ReportRepository {
             return ps;
         }, keyHolder);
 
-        return keyHolder.getKey().longValue();
+        Number key = keyHolder.getKey();
+        return key != null ? key.longValue() : 0L;
     }
 
     @Override
@@ -117,13 +118,37 @@ public class ReportRepositoryImpl implements ReportRepository {
     }
 
     @Override
-    public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters) {
+    public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters, String category) {
         String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
                 + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
                 + "from report r join location l on r.location_id = l.location_id "
-                + "where ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? "
-                + "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc";
-        // The POINT() function takes (longitude, latitude)
-        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, longitude, latitude, radiusInMeters, longitude, latitude);
+                + "where ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? ";
+        
+        if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
+            sql += "and r.category = ? ";
+            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc";
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, longitude, latitude, radiusInMeters, category, longitude, latitude);
+        } else {
+            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc";
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, longitude, latitude, radiusInMeters, longitude, latitude);
+        }
+    }
+
+    @Override
+    public void updateUpvotes(Long reportId, int delta) {
+        String sql = "UPDATE report SET upvote_count = upvote_count + ? WHERE report_id = ?";
+        jdbcTemplate.update(sql, delta, reportId);
+    }
+
+    @Override
+    public void updateDownvotes(Long reportId, int delta) {
+        String sql = "UPDATE report SET downvote_count = downvote_count + ? WHERE report_id = ?";
+        jdbcTemplate.update(sql, delta, reportId);
+    }
+
+    @Override
+    public void updateCommentCount(Long reportId, int delta) {
+        String sql = "UPDATE report SET comment_count = comment_count + ? WHERE report_id = ?";
+        jdbcTemplate.update(sql, delta, reportId);
     }
 }

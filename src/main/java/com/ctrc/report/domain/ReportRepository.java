@@ -14,5 +14,8 @@ public interface ReportRepository {
 
     List<Report> findAll();
 
-    List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters);
+    List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters, String category);
+    void updateUpvotes(Long reportId, int delta);
+    void updateDownvotes(Long reportId, int delta);
+    void updateCommentCount(Long reportId, int delta);
 }

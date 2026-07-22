@@ -21,15 +21,21 @@ public class ReportService {
     private final LocationRepository locationRepository;
     private final SubReportRepository subReportRepository;
     private final IncidentGroupRepository incidentGroupRepository;
+    private final com.ctrc.report.domain.VoteRepository voteRepository;
+    private final com.ctrc.report.domain.CommentRepository commentRepository;
 
     public ReportService(ReportRepository reportRepository, 
                          LocationRepository locationRepository,
                          SubReportRepository subReportRepository,
-                         IncidentGroupRepository incidentGroupRepository) {
+                         IncidentGroupRepository incidentGroupRepository,
+                         com.ctrc.report.domain.VoteRepository voteRepository,
+                         com.ctrc.report.domain.CommentRepository commentRepository) {
         this.reportRepository = reportRepository;
         this.locationRepository = locationRepository;
         this.subReportRepository = subReportRepository;
         this.incidentGroupRepository = incidentGroupRepository;
+        this.voteRepository = voteRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Transactional
@@ -79,8 +85,57 @@ public class ReportService {
         return reportRepository.findAll();
     }
 
-    public List<Report> getNearbyReports(Double latitude, Double longitude, Double radiusInKm) {
+    public List<Report> getNearbyReports(Double latitude, Double longitude, Double radiusInKm, String category) {
         Double radiusInMeters = radiusInKm * 1000;
-        return reportRepository.findNearby(latitude, longitude, radiusInMeters);
+        return reportRepository.findNearby(latitude, longitude, radiusInMeters, category);
+    }
+
+    @Transactional
+    public void voteReport(Long reportId, Long userId, String type) {
+        // Simple logic for now: delete existing vote if any, adjust count, add new vote
+        java.util.Optional<com.ctrc.report.domain.Vote> existingVote = voteRepository.findByUserAndReport(userId, reportId);
+        
+        if (existingVote.isPresent()) {
+            com.ctrc.report.domain.Vote vote = existingVote.get();
+            if (vote.getVoteType().equals(type)) {
+                return; // already voted same type
+            } else {
+                // remove old vote effect
+                if ("up".equals(vote.getVoteType())) {
+                    reportRepository.updateUpvotes(reportId, -1);
+                } else {
+                    reportRepository.updateDownvotes(reportId, -1);
+                }
+                voteRepository.delete(vote.getVoteId());
+            }
+        }
+
+        // Add new vote
+        com.ctrc.report.domain.Vote newVote = new com.ctrc.report.domain.Vote();
+        newVote.setReportId(reportId);
+        newVote.setUserId(userId);
+        newVote.setVoteType(type);
+        voteRepository.insert(newVote);
+
+        if ("up".equals(type)) {
+            reportRepository.updateUpvotes(reportId, 1);
+        } else {
+            reportRepository.updateDownvotes(reportId, 1);
+        }
+    }
+
+    @Transactional
+    public void commentReport(Long reportId, Long userId, String content) {
+        com.ctrc.report.domain.Comment comment = new com.ctrc.report.domain.Comment();
+        comment.setReportId(reportId);
+        comment.setUserId(userId);
+        comment.setContent(content);
+        commentRepository.insert(comment);
+        
+        reportRepository.updateCommentCount(reportId, 1);
+    }
+
+    public List<com.ctrc.report.domain.Comment> getComments(Long reportId) {
+        return commentRepository.findByReportId(reportId);
     }
 }

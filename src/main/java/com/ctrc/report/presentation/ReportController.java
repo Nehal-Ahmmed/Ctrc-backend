@@ -41,7 +41,31 @@ public class ReportController {
     public ApiResponse<List<Report>> getNearbyReports(
             @RequestParam("lat") Double lat,
             @RequestParam("lng") Double lng,
-            @RequestParam(value = "radius", defaultValue = "5.0") Double radius) {
-        return ApiResponse.success(reportService.getNearbyReports(lat, lng, radius));
+            @RequestParam(value = "radius", defaultValue = "5.0") Double radius,
+            @RequestParam(value = "category", required = false) String category) {
+        return ApiResponse.success(reportService.getNearbyReports(lat, lng, radius, category));
+    }
+
+    @PostMapping("/{id}/vote")
+    public ApiResponse<Object> vote(
+            @PathVariable("id") Long id,
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody com.ctrc.report.application.dto.VoteRequest request) {
+        reportService.voteReport(id, userId, request.getType());
+        return ApiResponse.success("Vote recorded successfully");
+    }
+
+    @PostMapping("/{id}/comments")
+    public ApiResponse<Object> addComment(
+            @PathVariable("id") Long id,
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody com.ctrc.report.application.dto.CommentRequest request) {
+        reportService.commentReport(id, userId, request.getContent());
+        return ApiResponse.success("Comment added successfully");
+    }
+
+    @GetMapping("/{id}/comments")
+    public ApiResponse<List<com.ctrc.report.domain.Comment>> getComments(@PathVariable("id") Long id) {
+        return ApiResponse.success(reportService.getComments(id));
     }
 }
