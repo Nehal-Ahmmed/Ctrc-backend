@@ -167,8 +167,8 @@ public class ReportRepositoryImpl implements ReportRepository {
     @Override
     public List<Report> findAll(Long viewerUserId) {
         String sql = SELECT_WITH_LOCATION
-                + "order by r.created_at desc limit ?";
-        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),DEFAULT_LIMIT);
+                + "order by r.created_at desc limit " + DEFAULT_LIMIT;
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId));
     }
 
     @Override
@@ -179,11 +179,11 @@ public class ReportRepositoryImpl implements ReportRepository {
 
         if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
             sql += "and r.category = ? ";
-            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit ?";
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, category, longitude, latitude, limit);
+            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit " + limit;
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, category, longitude, latitude);
         } else {
-            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit ?";
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, longitude, latitude, limit);
+            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit " + limit;
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, longitude, latitude);
         }
     }
 
@@ -203,8 +203,8 @@ public class ReportRepositoryImpl implements ReportRepository {
     public List<Report> findByUserId(Long userId, Long viewerUserId) {
         String sql = SELECT_WITH_LOCATION
                 + "where r.user_id = ? "
-                + "order by r.created_at desc limit ?";
-        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId, DEFAULT_LIMIT);
+                + "order by r.created_at desc limit " + DEFAULT_LIMIT;
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId);
     }
 
     @Override
@@ -212,8 +212,8 @@ public class ReportRepositoryImpl implements ReportRepository {
         String sql = SELECT_WITH_LOCATION
                 + "join saved_report sr on sr.report_id = r.report_id "
                 + "where sr.user_id = ? "
-                + "order by sr.saved_at desc limit ?";
-        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId, DEFAULT_LIMIT);
+                + "order by sr.saved_at desc limit " + DEFAULT_LIMIT;
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId);
     }
 
     @Override
@@ -226,11 +226,11 @@ public class ReportRepositoryImpl implements ReportRepository {
         
         if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
             sql += "and r.category = ? ";
-            sql += "limit ?";
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),minLatitude, maxLatitude, minLongitude, maxLongitude, category, limit);
+            sql += "limit " + limit;
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),minLatitude, maxLatitude, minLongitude, maxLongitude, category);
         } else {
-            sql += "limit ?";
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),minLatitude, maxLatitude, minLongitude, maxLongitude, limit);
+            sql += "limit " + limit;
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),minLatitude, maxLatitude, minLongitude, maxLongitude);
         }
     }
 }
