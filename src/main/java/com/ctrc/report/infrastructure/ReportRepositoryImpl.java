@@ -24,6 +24,44 @@ public class ReportRepositoryImpl implements ReportRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Hides reports whose lifetime has already elapsed. An incident that has
+     * expired is no longer a live road condition, so it must not reach the feed
+     * or the map.
+     */
+    /**
+     * No user can own this id, so for anonymous callers the viewer-specific
+     * subqueries simply match nothing instead of binding a NULL parameter.
+     */
+    private static final long ANONYMOUS_VIEWER = -1L;
+
+    private static long viewer(Long viewerUserId) {
+        return viewerUserId != null ? viewerUserId : ANONYMOUS_VIEWER;
+    }
+
+    private static final String NOT_EXPIRED =
+            "(r.expires_at is null or r.expires_at > now()) ";
+
+    /**
+     * Shared projection for every "rich" read: report + location + author +
+     * the two viewer-specific flags.
+     *
+     * <p>The two {@code ?} placeholders in the correlated subqueries are always
+     * the first two bind parameters, so callers pass the viewer id twice before
+     * their own arguments.
+     */
+    private static final String SELECT_WITH_LOCATION =
+            "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
+            + "u.name as author_name, u.image_url as author_image_url, "
+            + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
+            + "(select vote_type from vote v where v.report_id = r.report_id and v.user_id = ?) as user_vote_type, "
+            // aliased `sv`, not `sr`, so it never shadows the outer join that
+            // findSavedByUserId adds
+            + "(select count(*) from saved_report sv where sv.report_id = r.report_id and sv.user_id = ?) > 0 as is_saved "
+            + "from report r "
+            + "join location l on r.location_id = l.location_id "
+            + "left join user u on u.user_id = r.user_id ";
+
     private static final RowMapper<Report> ROW_MAPPER = (rs, rowNum) -> {
         Report report = new Report();
         report.setReportId(rs.getLong("report_id"));
@@ -39,15 +77,29 @@ public class ReportRepositoryImpl implements ReportRepository {
             int commentCount = rs.getInt("comment_count");
             report.setCommentCount(commentCount);
         } catch (java.sql.SQLException e) {
-            // comment_count column might not be present in all queries
             report.setCommentCount(0);
+        }
+
+        try {
+            report.setUserVoteType(rs.getString("user_vote_type"));
+        } catch (java.sql.SQLException e) {
+            report.setUserVoteType(null);
+        }
+
+        try {
+            report.setIsSaved(rs.getBoolean("is_saved"));
+        } catch (java.sql.SQLException e) {
+            report.setIsSaved(false);
         }
 
         Timestamp expiresAt = rs.getTimestamp("expires_at");
         if (expiresAt != null) {
             report.setExpiresAt(expiresAt.toLocalDateTime());
         }
-        report.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            report.setCreatedAt(createdAt.toLocalDateTime());
+        }
         return report;
     };
 
@@ -62,6 +114,9 @@ public class ReportRepositoryImpl implements ReportRepository {
         location.setAddress(rs.getString("loc_address"));
         location.setCity(rs.getString("city"));
         report.setLocation(location);
+
+        report.setAuthorName(rs.getString("author_name"));
+        report.setAuthorImageUrl(rs.getString("author_image_url"));
 
         return report;
     };
@@ -92,45 +147,43 @@ public class ReportRepositoryImpl implements ReportRepository {
     }
 
     @Override
-    public Optional<Report> findById(Long reportId) {
-        String sql = "select r.*, (select count(*) from comment c where c.report_id = r.report_id) as comment_count from report r where r.report_id = ?";
-        List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER, reportId);
+    public Optional<Report> findById(Long reportId, Long viewerUserId) {
+        String sql = "select r.*, (select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
+                + "(select vote_type from vote v where v.report_id = r.report_id and v.user_id = ?) as user_vote_type, "
+                + "(select count(*) from saved_report sr where sr.report_id = r.report_id and sr.user_id = ?) > 0 as is_saved "
+                + "from report r where r.report_id = ?";
+        List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER, viewer(viewerUserId), viewer(viewerUserId),reportId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     @Override
-    public Optional<Report> findByIdWithLocation(Long reportId) {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
-                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
-                + "from report r join location l on r.location_id = l.location_id "
+    public Optional<Report> findByIdWithLocation(Long reportId, Long viewerUserId) {
+        String sql = SELECT_WITH_LOCATION
                 + "where r.report_id = ?";
-        List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, reportId);
+        List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),reportId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     @Override
-    public List<Report> findAll() {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
-                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
-                + "from report r join location l on r.location_id = l.location_id "
-                + "order by r.created_at desc";
-        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION);
+    public List<Report> findAll(Long viewerUserId) {
+        String sql = SELECT_WITH_LOCATION
+                + "order by r.created_at desc limit ?";
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),DEFAULT_LIMIT);
     }
 
     @Override
-    public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters, String category) {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
-                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
-                + "from report r join location l on r.location_id = l.location_id "
-                + "where ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? ";
-        
+    public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters, String category, Long viewerUserId, int limit) {
+        String sql = SELECT_WITH_LOCATION
+                + "where " + NOT_EXPIRED
+                + "and ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? ";
+
         if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
             sql += "and r.category = ? ";
-            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc";
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, longitude, latitude, radiusInMeters, category, longitude, latitude);
+            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit ?";
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, category, longitude, latitude, limit);
         } else {
-            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc";
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, longitude, latitude, radiusInMeters, longitude, latitude);
+            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit ?";
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, longitude, latitude, limit);
         }
     }
 
@@ -147,29 +200,37 @@ public class ReportRepositoryImpl implements ReportRepository {
     }
 
     @Override
-    public void updateCommentCount(Long reportId, int delta) {
-        String sql = "UPDATE report SET comment_count = comment_count + ? WHERE report_id = ?";
-        jdbcTemplate.update(sql, delta, reportId);
-    }
-
-    @Override
-    public List<Report> findByUserId(Long userId) {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
-                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
-                + "from report r join location l on r.location_id = l.location_id "
+    public List<Report> findByUserId(Long userId, Long viewerUserId) {
+        String sql = SELECT_WITH_LOCATION
                 + "where r.user_id = ? "
-                + "order by r.created_at desc";
-        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, userId);
+                + "order by r.created_at desc limit ?";
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId, DEFAULT_LIMIT);
     }
 
     @Override
-    public List<Report> findSavedByUserId(Long userId) {
-        String sql = "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
-                + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count "
-                + "from report r join location l on r.location_id = l.location_id "
+    public List<Report> findSavedByUserId(Long userId, Long viewerUserId) {
+        String sql = SELECT_WITH_LOCATION
                 + "join saved_report sr on sr.report_id = r.report_id "
                 + "where sr.user_id = ? "
-                + "order by sr.saved_at desc";
-        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, userId);
+                + "order by sr.saved_at desc limit ?";
+        return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId, DEFAULT_LIMIT);
+    }
+
+    @Override
+    public List<Report> findWithinBoundingBox(double minLatitude, double maxLatitude,
+                                               double minLongitude, double maxLongitude,
+                                               String category, Long viewerUserId, int limit) {
+        String sql = SELECT_WITH_LOCATION
+                + "where " + NOT_EXPIRED
+                + "and l.latitude >= ? and l.latitude <= ? and l.longitude >= ? and l.longitude <= ? ";
+        
+        if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
+            sql += "and r.category = ? ";
+            sql += "limit ?";
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),minLatitude, maxLatitude, minLongitude, maxLongitude, category, limit);
+        } else {
+            sql += "limit ?";
+            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),minLatitude, maxLatitude, minLongitude, maxLongitude, limit);
+        }
     }
 }

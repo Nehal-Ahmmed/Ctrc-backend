@@ -29,13 +29,14 @@ public class ReportController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<Report> getReport(@PathVariable("id") Long id) {
-        return ApiResponse.success(reportService.getReportById(id));
+    public ApiResponse<Report> getReport(@PathVariable("id") Long id,
+                                         @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        return ApiResponse.success(reportService.getReportById(id, userId));
     }
 
     @GetMapping
-    public ApiResponse<List<Report>> getAllReports() {
-        return ApiResponse.success(reportService.getAllReports());
+    public ApiResponse<List<Report>> getAllReports(@RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        return ApiResponse.success(reportService.getAllReports(userId));
     }
 
     @GetMapping("/nearby")
@@ -43,8 +44,9 @@ public class ReportController {
             @RequestParam("lat") Double lat,
             @RequestParam("lng") Double lng,
             @RequestParam(value = "radius", defaultValue = "5.0") Double radius,
-            @RequestParam(value = "category", required = false) String category) {
-        return ApiResponse.success(reportService.getNearbyReports(lat, lng, radius, category));
+            @RequestParam(value = "category", required = false) String category,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        return ApiResponse.success(reportService.getNearbyReports(lat, lng, radius, category, userId));
     }
 
     @PostMapping("/{id}/vote")
@@ -66,12 +68,12 @@ public class ReportController {
 
     @GetMapping("/my-reports")
     public ApiResponse<List<Report>> getMyReports(@RequestHeader("X-User-Id") Long userId) {
-        return ApiResponse.success(reportService.getUserReports(userId));
+        return ApiResponse.success(reportService.getUserReports(userId, userId));
     }
 
     @GetMapping("/saved")
     public ApiResponse<List<Report>> getSavedReports(@RequestHeader("X-User-Id") Long userId) {
-        return ApiResponse.success(reportService.getSavedReports(userId));
+        return ApiResponse.success(reportService.getSavedReports(userId, userId));
     }
 
     @PostMapping("/{id}/save")
@@ -91,5 +93,22 @@ public class ReportController {
     @GetMapping("/{id}/comments")
     public ApiResponse<List<com.ctrc.report.domain.Comment>> getComments(@PathVariable("id") Long id) {
         return ApiResponse.success(reportService.getComments(id));
+    }
+
+    /**
+     * Incidents within {@code corridorKm} of a route. One call replaces the
+     * client probing /nearby repeatedly along a long trip.
+     */
+    @PostMapping("/along-route")
+    public ApiResponse<List<com.ctrc.report.application.dto.RouteHazardDto>> getReportsAlongRoute(
+            @Valid @RequestBody com.ctrc.report.application.dto.RouteScanRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        return ApiResponse.success(reportService.getReportsAlongRoute(
+                request.getPath(), request.getCorridorKm(), request.getCategory(), userId));
+    }
+
+    @GetMapping("/{id}/votes")
+    public ApiResponse<List<com.ctrc.report.domain.Vote>> getVotes(@PathVariable("id") Long id) {
+        return ApiResponse.success(reportService.getVotes(id));
     }
 }

@@ -30,6 +30,12 @@ public class VoteRepositoryImpl implements VoteRepository {
         vote.setSubReportId(rs.getObject("sub_report_id") != null ? rs.getLong("sub_report_id") : null);
         vote.setVoteType(rs.getString("vote_type"));
         vote.setVotedAt(rs.getTimestamp("voted_at"));
+        try {
+            vote.setUserName(rs.getString("user_name"));
+            vote.setUserImageUrl(rs.getString("user_image_url"));
+        } catch (java.sql.SQLException e) {
+            // ignore if not present in query result
+        }
         return vote;
     };
 
@@ -70,5 +76,15 @@ public class VoteRepositoryImpl implements VoteRepository {
     public void delete(Long voteId) {
         String sql = "DELETE FROM vote WHERE vote_id = ?";
         jdbcTemplate.update(sql, voteId);
+    }
+
+    @Override
+    public List<Vote> findByReportId(Long reportId) {
+        String sql = "SELECT v.*, u.name AS user_name, u.image_url AS user_image_url "
+                + "FROM vote v "
+                + "JOIN user u ON v.user_id = u.user_id "
+                + "WHERE v.report_id = ? "
+                + "ORDER BY v.voted_at DESC";
+        return jdbcTemplate.query(sql, ROW_MAPPER, reportId);
     }
 }

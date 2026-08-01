@@ -51,4 +51,18 @@ public class UserController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
+
+    @PostMapping("/me/avatar")
+    public ResponseEntity<ApiResponse<User>> uploadAvatar(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            String email = extractEmailFromHeader(authHeader);
+            User user = userService.updateAvatar(email, file);
+            user.setPassword(null);
+            return ResponseEntity.ok(ApiResponse.success(user));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
 }

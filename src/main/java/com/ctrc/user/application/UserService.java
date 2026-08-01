@@ -15,9 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final com.ctrc.core.services.CloudinaryService cloudinaryService;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, com.ctrc.core.services.CloudinaryService cloudinaryService) {
         this.userRepository = userRepository;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @Transactional
@@ -66,6 +68,17 @@ public class UserService {
         user.setAddress(dto.getAddress());
         user.setImageUrl(dto.getImageUrl());
 
+        userRepository.update(user);
+        return user;
+    }
+
+    @Transactional
+    public User updateAvatar(String email, org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        String imageUrl = cloudinaryService.uploadImage(file);
+        user.setImageUrl(imageUrl);
         userRepository.update(user);
         return user;
     }

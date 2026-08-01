@@ -29,6 +29,12 @@ public class CommentRepositoryImpl implements CommentRepository {
         comment.setSubReportId(rs.getObject("sub_report_id") != null ? rs.getLong("sub_report_id") : null);
         comment.setContent(rs.getString("content"));
         comment.setCreatedAt(rs.getTimestamp("created_at"));
+        try {
+            comment.setUserName(rs.getString("user_name"));
+            comment.setUserImageUrl(rs.getString("user_image_url"));
+        } catch (java.sql.SQLException e) {
+            // ignore if not present in query result
+        }
         return comment;
     };
 
@@ -60,7 +66,11 @@ public class CommentRepositoryImpl implements CommentRepository {
 
     @Override
     public List<Comment> findByReportId(Long reportId) {
-        String sql = "SELECT * FROM comment WHERE report_id = ? ORDER BY created_at ASC";
+        String sql = "SELECT c.*, u.name AS user_name, u.image_url AS user_image_url "
+                + "FROM comment c "
+                + "JOIN user u ON c.user_id = u.user_id "
+                + "WHERE c.report_id = ? "
+                + "ORDER BY c.created_at ASC";
         return jdbcTemplate.query(sql, ROW_MAPPER, reportId);
     }
 }

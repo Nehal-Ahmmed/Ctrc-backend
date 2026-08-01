@@ -9,6 +9,8 @@ public class Comment {
     private Long subReportId;
     private String content;
     private Timestamp createdAt;
+    private String userName;
+    private String userImageUrl;
 
     public Comment() {}
 
@@ -58,5 +60,21 @@ public class Comment {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserImageUrl() {
+        return userImageUrl;
+    }
+
+    public void setUserImageUrl(String userImageUrl) {
+        this.userImageUrl = userImageUrl;
     }
 }

@@ -22,6 +22,16 @@ public class Report {
     // populated when report is fetched with its location joined, not a db column
     private Location location;
 
+    // joined from the user table so clients don't have to resolve the author
+    private String authorName;
+    private String authorImageUrl;
+
+    // true when the requesting user (X-User-Id) has bookmarked this report
+    private Boolean isSaved;
+
+    // 'up', 'down', or null representing the current user's vote
+    private String userVoteType;
+
     public Report() {
     }
 
@@ -119,5 +129,37 @@ public class Report {
 
     public void setLocation(Location location) {
         this.location = location;
+    }
+
+    public String getAuthorName() {
+        return authorName;
+    }
+
+    public void setAuthorName(String authorName) {
+        this.authorName = authorName;
+    }
+
+    public String getAuthorImageUrl() {
+        return authorImageUrl;
+    }
+
+    public void setAuthorImageUrl(String authorImageUrl) {
+        this.authorImageUrl = authorImageUrl;
+    }
+
+    public Boolean getIsSaved() {
+        return isSaved;
+    }
+
+    public void setIsSaved(Boolean isSaved) {
+        this.isSaved = isSaved;
+    }
+
+    public String getUserVoteType() {
+        return userVoteType;
+    }
+
+    public void setUserVoteType(String userVoteType) {
+        this.userVoteType = userVoteType;
     }
 }

@@ -9,6 +9,8 @@ public class Vote {
     private Long subReportId;
     private String voteType; // 'up' or 'down'
     private Timestamp votedAt;
+    private String userName;
+    private String userImageUrl;
 
     public Vote() {}
 
@@ -58,5 +60,21 @@ public class Vote {
 
     public void setVotedAt(Timestamp votedAt) {
         this.votedAt = votedAt;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserImageUrl() {
+        return userImageUrl;
+    }
+
+    public void setUserImageUrl(String userImageUrl) {
+        this.userImageUrl = userImageUrl;
     }
 }
