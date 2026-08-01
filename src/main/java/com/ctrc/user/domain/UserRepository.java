@@ -7,4 +7,5 @@ public interface UserRepository {
     Optional<User> findByEmail(String email);
     Optional<User> findById(Long id);
     void update(User user);
+    void updatePassword(Long userId, String newPassword);
 }
