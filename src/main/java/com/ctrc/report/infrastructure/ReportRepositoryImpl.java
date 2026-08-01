@@ -54,13 +54,19 @@ public class ReportRepositoryImpl implements ReportRepository {
             "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
             + "u.name as author_name, u.image_url as author_image_url, "
             + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
-            + "(select vote_type from vote v where v.report_id = r.report_id and v.user_id = ?) as user_vote_type, "
-            // aliased `sv`, not `sr`, so it never shadows the outer join that
-            // findSavedByUserId adds
-            + "(select count(*) from saved_report sv where sv.report_id = r.report_id and sv.user_id = ?) > 0 as is_saved "
+            + "v.vote_type as user_vote_type, "
+            // CASE rather than `(... is not null) as is_saved`: a bare boolean
+            // expression with an alias is the kind of thing older MySQL /
+            // MariaDB builds are picky about.
+            + "case when sv.saved_report_id is null then 0 else 1 end as is_saved "
             + "from report r "
             + "join location l on r.location_id = l.location_id "
-            + "left join user u on u.user_id = r.user_id ";
+            // `user` is backticked because it is a keyword in several engines.
+            + "left join `user` u on u.user_id = r.user_id "
+            // Joined instead of correlated-subqueried: same result, one pass,
+            // and the viewer id stays as the first two bind parameters.
+            + "left join vote v on v.report_id = r.report_id and v.user_id = ? "
+            + "left join saved_report sv on sv.report_id = r.report_id and sv.user_id = ? ";
 
     private static final RowMapper<Report> ROW_MAPPER = (rs, rowNum) -> {
         Report report = new Report();
@@ -149,10 +155,13 @@ public class ReportRepositoryImpl implements ReportRepository {
     @Override
     public Optional<Report> findById(Long reportId, Long viewerUserId) {
         String sql = "select r.*, (select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
-                + "(select vote_type from vote v where v.report_id = r.report_id and v.user_id = ?) as user_vote_type, "
-                + "(select count(*) from saved_report sr where sr.report_id = r.report_id and sr.user_id = ?) > 0 as is_saved "
-                + "from report r where r.report_id = ?";
-        List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER, viewer(viewerUserId), viewer(viewerUserId),reportId);
+                + "v.vote_type as user_vote_type, "
+                + "case when sv.saved_report_id is null then 0 else 1 end as is_saved "
+                + "from report r "
+                + "left join vote v on v.report_id = r.report_id and v.user_id = ? "
+                + "left join saved_report sv on sv.report_id = r.report_id and sv.user_id = ? "
+                + "where r.report_id = ?";
+        List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER, viewer(viewerUserId), viewer(viewerUserId), reportId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
