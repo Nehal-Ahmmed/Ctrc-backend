@@ -75,4 +75,10 @@ public class UserRepositoryImpl implements UserRepository {
         String sql = "UPDATE user SET name = ?, address = ?, image_url = ? WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getName(), user.getAddress(), user.getImageUrl(), user.getId());
     }
+
+    @Override
+    public void updatePassword(Long userId, String newPassword) {
+        String sql = "UPDATE user SET password = ? WHERE user_id = ?";
+        jdbcTemplate.update(sql, newPassword, userId);
+    }
 }

@@ -52,17 +52,22 @@ public class ReportService {
 
         Long locationId = locationRepository.insert(location);
 
+        String evidenceType = request.getEvidenceType();
+
         if (request.getParentReportId() != null) {
             SubReport subReport = new SubReport();
             subReport.setUserId(request.getUserId());
             subReport.setReportId(request.getParentReportId());
             subReport.setLocationId(locationId);
             subReport.setDescription(request.getDescription());
-            
+            subReport.setEvidenceType(evidenceType != null ? evidenceType : "heard");
+            subReport.setCategory(request.getCategory());
+
             subReportRepository.insert(subReport);
-            
-            return reportRepository.findByIdWithLocation(request.getParentReportId(), request.getUserId())
-                    .orElseThrow(() -> new ResourceNotFoundException("parent report not found"));
+
+            // Hand back the parent with its thread already rebuilt, so the
+            // client sees the update it just filed without a second call.
+            return getReportById(request.getParentReportId(), request.getUserId());
         } else {
             Report report = new Report();
             report.setUserId(request.getUserId());
@@ -70,6 +75,7 @@ public class ReportService {
             report.setTitle(request.getTitle());
             report.setDescription(request.getDescription());
             report.setCategory(request.getCategory());
+            report.setEvidenceType(evidenceType != null ? evidenceType : "seen");
 
             Long reportId = reportRepository.insert(report);
             
@@ -81,8 +87,16 @@ public class ReportService {
     }
 
     public Report getReportById(Long reportId, Long currentUserId) {
-        return reportRepository.findByIdWithLocation(reportId, currentUserId)
+        Report report = reportRepository.findByIdWithLocation(reportId, currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("report not found with id " + reportId));
+
+        // The detail view is the one place the whole incident thread is shown,
+        // so the linked updates are loaded here and nowhere else.
+        List<SubReport> subReports = subReportRepository.findByReportId(reportId);
+        report.setSubReports(subReports);
+        report.setSubReportCount(subReports.size());
+
+        return report;
     }
 
     public List<Report> getAllReports(Long currentUserId) {
@@ -114,43 +128,25 @@ public class ReportService {
 
     @Transactional
     public void voteReport(Long reportId, Long userId, String type) {
-        // Toggle logic: delete existing vote if same type, swap count if different type, insert new if none
+        // Voting the same way twice removes the vote, voting the other way
+        // replaces it. The upvote_count / downvote_count columns and the
+        // report status are maintained by the trg_vote_insert and
+        // trg_vote_delete triggers, so nothing is counted here.
         java.util.Optional<com.ctrc.report.domain.Vote> existingVote = voteRepository.findByUserAndReport(userId, reportId);
-        
+
         if (existingVote.isPresent()) {
             com.ctrc.report.domain.Vote vote = existingVote.get();
+            voteRepository.delete(vote.getVoteId());
             if (vote.getVoteType().equals(type)) {
-                // Toggle off
-                if ("up".equals(type)) {
-                    reportRepository.updateUpvotes(reportId, -1);
-                } else {
-                    reportRepository.updateDownvotes(reportId, -1);
-                }
-                voteRepository.delete(vote.getVoteId());
                 return;
-            } else {
-                // remove old vote effect
-                if ("up".equals(vote.getVoteType())) {
-                    reportRepository.updateUpvotes(reportId, -1);
-                } else {
-                    reportRepository.updateDownvotes(reportId, -1);
-                }
-                voteRepository.delete(vote.getVoteId());
             }
         }
 
-        // Add new vote
         com.ctrc.report.domain.Vote newVote = new com.ctrc.report.domain.Vote();
         newVote.setReportId(reportId);
         newVote.setUserId(userId);
         newVote.setVoteType(type);
         voteRepository.insert(newVote);
-
-        if ("up".equals(type)) {
-            reportRepository.updateUpvotes(reportId, 1);
-        } else {
-            reportRepository.updateDownvotes(reportId, 1);
-        }
     }
 
     @Transactional

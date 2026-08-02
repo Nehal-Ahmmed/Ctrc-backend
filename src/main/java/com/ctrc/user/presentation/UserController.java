@@ -2,6 +2,7 @@ package com.ctrc.user.presentation;
 
 import com.ctrc.core.presentation.ApiResponse;
 import com.ctrc.user.application.UserService;
+import com.ctrc.user.application.dto.ChangePasswordRequest;
 import com.ctrc.user.application.dto.UserUpdateDto;
 import com.ctrc.user.domain.User;
 import jakarta.validation.Valid;
@@ -47,6 +48,19 @@ public class UserController {
             User user = userService.updateProfile(email, dto);
             user.setPassword(null);
             return ResponseEntity.ok(ApiResponse.success(user));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @RequestHeader("Authorization") String authHeader,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        try {
+            String email = extractEmailFromHeader(authHeader);
+            userService.changePassword(email, request);
+            return ResponseEntity.ok(ApiResponse.success("Password updated successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

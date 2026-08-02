@@ -3,6 +3,7 @@ package com.ctrc.user.application;
 import com.ctrc.core.domain.exceptions.ConflictException;
 import com.ctrc.core.domain.exceptions.ResourceNotFoundException;
 import com.ctrc.core.domain.exceptions.ValidationException;
+import com.ctrc.user.application.dto.ChangePasswordRequest;
 import com.ctrc.user.application.dto.LoginRequest;
 import com.ctrc.user.application.dto.SignupRequest;
 import com.ctrc.user.application.dto.UserUpdateDto;
@@ -69,6 +70,29 @@ public class UserService {
         user.setImageUrl(dto.getImageUrl());
 
         userRepository.update(user);
+        return user;
+    }
+
+    @Transactional
+    public User changePassword(String email, ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new ValidationException("New passwords do not match");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // Plain text comparison, matching signup/login above
+        if (!user.getPassword().equals(request.getCurrentPassword())) {
+            throw new ValidationException("Current password is incorrect");
+        }
+
+        if (request.getNewPassword().equals(request.getCurrentPassword())) {
+            throw new ValidationException("New password must be different from the current one");
+        }
+
+        userRepository.updatePassword(user.getId(), request.getNewPassword());
+        user.setPassword(request.getNewPassword());
         return user;
     }
 
