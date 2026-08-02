@@ -28,6 +28,23 @@ public class ReportController {
         return ApiResponse.success(report);
     }
 
+    /**
+     * Uploads one photo and hands back its link. The app calls this first,
+     * then sends the returned url as {@code imageUrl} when it creates the
+     * report, so the create endpoint stays plain JSON.
+     */
+    @PostMapping("/upload-image")
+    public ApiResponse<java.util.Map<String, String>> uploadImage(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            String url = reportService.uploadReportImage(file);
+            return ApiResponse.success(java.util.Collections.singletonMap("url", url));
+        } catch (java.io.IOException e) {
+            throw new com.ctrc.core.domain.exceptions.ValidationException(
+                    "could not upload the image: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<Report> getReport(@PathVariable("id") Long id,
                                          @RequestHeader(value = "X-User-Id", required = false) Long userId) {

@@ -18,12 +18,16 @@ public class CloudinaryService {
     }
 
     public String uploadImage(MultipartFile file) throws IOException {
+        return uploadImage(file, "ctrc_profiles");
+    }
+
+    public String uploadImage(MultipartFile file, String folder) throws IOException {
         // Upload file bytes to Cloudinary
         Map<?, ?> uploadResult = cloudinary.uploader().upload(
                 file.getBytes(),
                 ObjectUtils.asMap(
                         "resource_type", "auto",
-                        "folder", "ctrc_profiles"
+                        "folder", folder
                 )
         );
         return (String) uploadResult.get("secure_url");

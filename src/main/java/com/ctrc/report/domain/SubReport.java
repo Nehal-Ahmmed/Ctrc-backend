@@ -18,6 +18,9 @@ public class SubReport {
     // what the reporter thinks the incident is; promotes an 'Unknown' parent
     private String category;
 
+    // photo of the incident, hosted on cloudinary
+    private String imageUrl;
+
     private Double distFromParent;
     private Integer upvoteCount;
     private Integer downvoteCount;
@@ -114,6 +117,14 @@ public class SubReport {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public Double getDistFromParent() {

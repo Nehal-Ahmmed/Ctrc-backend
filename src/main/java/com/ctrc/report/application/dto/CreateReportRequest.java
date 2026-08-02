@@ -20,6 +20,9 @@ public class CreateReportRequest {
     // 'seen', 'heard' or 'guessed'
     private String evidenceType;
 
+    // cloudinary link, uploaded separately before the report is submitted
+    private String imageUrl;
+
     private Long parentReportId;
 
     @NotNull(message = "is required")
@@ -101,6 +104,14 @@ public class CreateReportRequest {
 
     public void setEvidenceType(String evidenceType) {
         this.evidenceType = evidenceType;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public Long getParentReportId() {
