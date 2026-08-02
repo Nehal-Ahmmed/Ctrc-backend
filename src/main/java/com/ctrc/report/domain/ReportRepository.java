@@ -20,8 +20,13 @@ public interface ReportRepository {
 
     List<Report> findAll(Long viewerUserId);
 
+    /**
+     * Feed query. {@code filter} decides both which reports come back and the
+     * order they arrive in; pass {@link ReportFeedFilter#DEFAULT} for the plain
+     * closest-first list.
+     */
     List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters,
-                            String category, Long viewerUserId, int limit);
+                            String category, ReportFeedFilter filter, Long viewerUserId, int limit);
 
     /**
      * Reports whose location falls inside a lat/lng box. Used as the cheap
@@ -30,6 +35,13 @@ public interface ReportRepository {
     List<Report> findWithinBoundingBox(double minLatitude, double maxLatitude,
                                        double minLongitude, double maxLongitude,
                                        String category, Long viewerUserId, int limit);
+
+    /**
+     * Edits the text side of a report. The owner check is part of the where
+     * clause, so a mismatch simply updates nothing and returns 0 rather than
+     * touching somebody else's row.
+     */
+    int update(Report report);
 
     void updateUpvotes(Long reportId, int delta);
 

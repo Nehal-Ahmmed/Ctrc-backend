@@ -2,6 +2,7 @@ package com.ctrc.report.presentation;
 
 import com.ctrc.report.application.ReportService;
 import com.ctrc.report.domain.Report;
+import com.ctrc.report.domain.ReportFeedFilter;
 import com.ctrc.report.application.dto.CommentRequest;
 import com.ctrc.report.application.dto.CreateReportRequest;
 import com.ctrc.core.presentation.ApiResponse;
@@ -56,14 +57,33 @@ public class ReportController {
         return ApiResponse.success(reportService.getAllReports(userId));
     }
 
+    /**
+     * The home feed. Beyond the radius and the category chip, the app can ask
+     * for a narrower slice and a different ordering; all of it is resolved in
+     * the query rather than by re-sorting the list on the device.
+     */
     @GetMapping("/nearby")
     public ApiResponse<List<Report>> getNearbyReports(
             @RequestParam("lat") Double lat,
             @RequestParam("lng") Double lng,
             @RequestParam(value = "radius", defaultValue = "5.0") Double radius,
             @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "sort", required = false) String sort,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "evidence", required = false) String evidence,
+            @RequestParam(value = "withinHours", required = false) Integer withinHours,
+            @RequestParam(value = "withPhoto", required = false) Boolean withPhoto,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        return ApiResponse.success(reportService.getNearbyReports(lat, lng, radius, category, userId));
+        ReportFeedFilter filter = ReportFeedFilter.of(sort, status, evidence, withinHours, withPhoto);
+        return ApiResponse.success(reportService.getNearbyReports(lat, lng, radius, category, filter, userId));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<Report> updateReport(
+            @PathVariable("id") Long id,
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody com.ctrc.report.application.dto.UpdateReportRequest request) {
+        return ApiResponse.success(reportService.updateReport(id, userId, request));
     }
 
     @PostMapping("/{id}/vote")
