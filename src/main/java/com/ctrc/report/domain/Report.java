@@ -21,6 +21,9 @@ public class Report {
     // 'unverified', 'verified' or 'disputed', maintained by a db trigger
     private String status;
 
+    // photo of the incident, hosted on cloudinary
+    private String imageUrl;
+
     private Integer upvoteCount;
     private Integer downvoteCount;
     private Integer commentCount;
@@ -128,6 +131,14 @@ public class Report {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public Integer getUpvoteCount() {

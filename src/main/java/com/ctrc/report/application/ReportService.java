@@ -25,14 +25,16 @@ public class ReportService {
     private final com.ctrc.report.domain.VoteRepository voteRepository;
     private final com.ctrc.report.domain.CommentRepository commentRepository;
     private final SavedReportRepository savedReportRepository;
+    private final com.ctrc.core.services.CloudinaryService cloudinaryService;
 
-    public ReportService(ReportRepository reportRepository, 
+    public ReportService(ReportRepository reportRepository,
                          LocationRepository locationRepository,
                          SubReportRepository subReportRepository,
                          IncidentGroupRepository incidentGroupRepository,
                          com.ctrc.report.domain.VoteRepository voteRepository,
                          com.ctrc.report.domain.CommentRepository commentRepository,
-                         SavedReportRepository savedReportRepository) {
+                         SavedReportRepository savedReportRepository,
+                         com.ctrc.core.services.CloudinaryService cloudinaryService) {
         this.reportRepository = reportRepository;
         this.locationRepository = locationRepository;
         this.subReportRepository = subReportRepository;
@@ -40,6 +42,12 @@ public class ReportService {
         this.voteRepository = voteRepository;
         this.commentRepository = commentRepository;
         this.savedReportRepository = savedReportRepository;
+        this.cloudinaryService = cloudinaryService;
+    }
+
+    public String uploadReportImage(org.springframework.web.multipart.MultipartFile file)
+            throws java.io.IOException {
+        return cloudinaryService.uploadImage(file, "ctrc_reports");
     }
 
     @Transactional
@@ -62,6 +70,7 @@ public class ReportService {
             subReport.setDescription(request.getDescription());
             subReport.setEvidenceType(evidenceType != null ? evidenceType : "heard");
             subReport.setCategory(request.getCategory());
+            subReport.setImageUrl(request.getImageUrl());
 
             subReportRepository.insert(subReport);
 
@@ -76,6 +85,7 @@ public class ReportService {
             report.setDescription(request.getDescription());
             report.setCategory(request.getCategory());
             report.setEvidenceType(evidenceType != null ? evidenceType : "seen");
+            report.setImageUrl(request.getImageUrl());
 
             Long reportId = reportRepository.insert(report);
             

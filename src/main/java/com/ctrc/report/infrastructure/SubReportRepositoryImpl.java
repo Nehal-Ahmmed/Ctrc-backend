@@ -34,6 +34,7 @@ public class SubReportRepositoryImpl implements SubReportRepository {
         try {
             sr.setEvidenceType(rs.getString("evidence_type"));
             sr.setCategory(rs.getString("category"));
+            sr.setImageUrl(rs.getString("image_url"));
         } catch (java.sql.SQLException e) {
             sr.setEvidenceType("heard");
         }
@@ -48,8 +49,8 @@ public class SubReportRepositoryImpl implements SubReportRepository {
     @Override
     public Long insert(SubReport subReport) {
         String sql = "insert into sub_report (user_id, report_id, location_id, description, "
-                   + "evidence_type, category, dist_from_parent, upvote_count, downvote_count) "
-                   + "values (?, ?, ?, ?, ?, ?, "
+                   + "evidence_type, category, image_url, dist_from_parent, upvote_count, downvote_count) "
+                   + "values (?, ?, ?, ?, ?, ?, ?, "
                    + "(select ST_Distance_Sphere(POINT(l1.longitude, l1.latitude), POINT(l2.longitude, l2.latitude)) "
                    + "from location l1 cross join location l2 "
                    + "where l1.location_id = ? and l2.location_id = (select location_id from report where report_id = ?)), "
@@ -65,8 +66,9 @@ public class SubReportRepositoryImpl implements SubReportRepository {
             ps.setString(4, subReport.getDescription());
             ps.setString(5, subReport.getEvidenceType() != null ? subReport.getEvidenceType() : "heard");
             ps.setString(6, subReport.getCategory());
-            ps.setLong(7, subReport.getLocationId());
-            ps.setLong(8, subReport.getReportId());
+            ps.setString(7, subReport.getImageUrl());
+            ps.setLong(8, subReport.getLocationId());
+            ps.setLong(9, subReport.getReportId());
             return ps;
         }, keyHolder);
 

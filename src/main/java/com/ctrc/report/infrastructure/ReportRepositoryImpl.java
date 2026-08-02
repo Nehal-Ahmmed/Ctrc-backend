@@ -94,6 +94,12 @@ public class ReportRepositoryImpl implements ReportRepository {
             report.setStatus("unverified");
         }
 
+        try {
+            report.setImageUrl(rs.getString("image_url"));
+        } catch (java.sql.SQLException e) {
+            report.setImageUrl(null);
+        }
+
 
         try {
             int commentCount = rs.getInt("comment_count");
@@ -156,8 +162,8 @@ public class ReportRepositoryImpl implements ReportRepository {
         // A report with no expiry would sit on the map forever, so one is
         // filled in here when the caller did not supply it.
         String sql = "insert into report (user_id, location_id, title, description, category, "
-                + "evidence_type, upvote_count, downvote_count, expires_at) "
-                + "values (?, ?, ?, ?, ?, ?, 0, 0, coalesce(?, now() + interval 3 hour))";
+                + "evidence_type, image_url, upvote_count, downvote_count, expires_at) "
+                + "values (?, ?, ?, ?, ?, ?, ?, 0, 0, coalesce(?, now() + interval 3 hour))";
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
@@ -168,10 +174,11 @@ public class ReportRepositoryImpl implements ReportRepository {
             ps.setString(4, report.getDescription());
             ps.setString(5, report.getCategory());
             ps.setString(6, report.getEvidenceType() != null ? report.getEvidenceType() : "seen");
+            ps.setString(7, report.getImageUrl());
             if (report.getExpiresAt() != null) {
-                ps.setTimestamp(7, Timestamp.valueOf(report.getExpiresAt()));
+                ps.setTimestamp(8, Timestamp.valueOf(report.getExpiresAt()));
             } else {
-                ps.setTimestamp(7, null);
+                ps.setTimestamp(8, null);
             }
             return ps;
         }, keyHolder);
