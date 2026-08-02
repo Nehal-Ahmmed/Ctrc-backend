@@ -73,6 +73,13 @@
             <artifactId>cloudinary-http44</artifactId>
             <version>1.36.0</version>
         </dependency>
+
+        <!-- sends the nearby-incident pushes through firebase cloud messaging -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.4.1</version>
+        </dependency>
     </dependencies>
 
     <build>

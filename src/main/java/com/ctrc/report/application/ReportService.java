@@ -26,6 +26,7 @@ public class ReportService {
     private final com.ctrc.report.domain.CommentRepository commentRepository;
     private final SavedReportRepository savedReportRepository;
     private final com.ctrc.core.services.CloudinaryService cloudinaryService;
+    private final com.ctrc.core.services.PushService pushService;
 
     public ReportService(ReportRepository reportRepository,
                          LocationRepository locationRepository,
@@ -34,7 +35,8 @@ public class ReportService {
                          com.ctrc.report.domain.VoteRepository voteRepository,
                          com.ctrc.report.domain.CommentRepository commentRepository,
                          SavedReportRepository savedReportRepository,
-                         com.ctrc.core.services.CloudinaryService cloudinaryService) {
+                         com.ctrc.core.services.CloudinaryService cloudinaryService,
+                         com.ctrc.core.services.PushService pushService) {
         this.reportRepository = reportRepository;
         this.locationRepository = locationRepository;
         this.subReportRepository = subReportRepository;
@@ -43,6 +45,7 @@ public class ReportService {
         this.commentRepository = commentRepository;
         this.savedReportRepository = savedReportRepository;
         this.cloudinaryService = cloudinaryService;
+        this.pushService = pushService;
     }
 
     public String uploadReportImage(org.springframework.web.multipart.MultipartFile file)
@@ -88,8 +91,14 @@ public class ReportService {
             report.setImageUrl(request.getImageUrl());
 
             Long reportId = reportRepository.insert(report);
-            
+
             incidentGroupRepository.insert(reportId, request.getTitle());
+
+            // Tells everyone whose phone is watching this part of the map. It
+            // swallows its own failures, so a Firebase outage cannot stop a
+            // report from being filed.
+            pushService.notifyArea(reportId, report.getTitle(), report.getCategory(),
+                    request.getLatitude(), request.getLongitude());
 
             return reportRepository.findByIdWithLocation(reportId, request.getUserId())
                     .orElseThrow(() -> new ResourceNotFoundException("report not found after creation"));
