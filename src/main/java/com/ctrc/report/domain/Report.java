@@ -24,6 +24,9 @@ public class Report {
     // photo of the incident, hosted on cloudinary
     private String imageUrl;
 
+    // null until the author edits the report
+    private LocalDateTime updatedAt;
+
     private Integer upvoteCount;
     private Integer downvoteCount;
     private Integer commentCount;
@@ -139,6 +142,14 @@ public class Report {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Integer getUpvoteCount() {

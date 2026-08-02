@@ -1,6 +1,7 @@
 package com.ctrc.report.infrastructure;
 
 import com.ctrc.report.domain.Report;
+import com.ctrc.report.domain.ReportFeedFilter;
 import com.ctrc.report.domain.ReportRepository;
 import com.ctrc.location.domain.Location;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -100,6 +101,15 @@ public class ReportRepositoryImpl implements ReportRepository {
             report.setImageUrl(null);
         }
 
+        try {
+            Timestamp updatedAt = rs.getTimestamp("updated_at");
+            if (updatedAt != null) {
+                report.setUpdatedAt(updatedAt.toLocalDateTime());
+            }
+        } catch (java.sql.SQLException e) {
+            report.setUpdatedAt(null);
+        }
+
 
         try {
             int commentCount = rs.getInt("comment_count");
@@ -188,6 +198,22 @@ public class ReportRepositoryImpl implements ReportRepository {
     }
 
     @Override
+    public int update(Report report) {
+        String sql = "update report "
+                + "set title = ?, description = ?, category = ?, evidence_type = ?, "
+                + "image_url = ?, updated_at = now() "
+                + "where report_id = ? and user_id = ?";
+        return jdbcTemplate.update(sql,
+                report.getTitle(),
+                report.getDescription(),
+                report.getCategory(),
+                report.getEvidenceType() != null ? report.getEvidenceType() : "seen",
+                report.getImageUrl(),
+                report.getReportId(),
+                report.getUserId());
+    }
+
+    @Override
     public Optional<Report> findById(Long reportId, Long viewerUserId) {
         String sql = "select r.*, (select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
                 + "v.vote_type as user_vote_type, "
@@ -216,18 +242,80 @@ public class ReportRepositoryImpl implements ReportRepository {
     }
 
     @Override
-    public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters, String category, Long viewerUserId, int limit) {
-        String sql = SELECT_WITH_LOCATION
-                + "where " + NOT_EXPIRED
-                + "and ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? ";
+    public List<Report> findNearby(Double latitude, Double longitude, Double radiusInMeters,
+                                   String category, ReportFeedFilter filter, Long viewerUserId, int limit) {
+        ReportFeedFilter feedFilter = filter != null ? filter : ReportFeedFilter.DEFAULT;
 
+        // Built up alongside the sql because the number of bind values now
+        // depends on which filters the caller switched on, and on whether the
+        // chosen ordering needs the viewer's position a second time.
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(viewer(viewerUserId));
+        params.add(viewer(viewerUserId));
+
+        StringBuilder sql = new StringBuilder(SELECT_WITH_LOCATION)
+                .append("where ").append(NOT_EXPIRED)
+                .append("and ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? ");
+        params.add(longitude);
+        params.add(latitude);
+        params.add(radiusInMeters);
+
+        appendCategory(sql, params, category);
+        appendFeedFilters(sql, params, feedFilter);
+        appendFeedOrder(sql, params, feedFilter, longitude, latitude);
+        sql.append("limit ").append(limit);
+
+        return jdbcTemplate.query(sql.toString(), ROW_MAPPER_WITH_LOCATION, params.toArray());
+    }
+
+    private static void appendCategory(StringBuilder sql, List<Object> params, String category) {
         if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
-            sql += "and r.category = ? ";
-            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit " + limit;
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, category, longitude, latitude);
-        } else {
-            sql += "order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc limit " + limit;
-            return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),longitude, latitude, radiusInMeters, longitude, latitude);
+            sql.append("and r.category = ? ");
+            params.add(category);
+        }
+    }
+
+    private static void appendFeedFilters(StringBuilder sql, List<Object> params, ReportFeedFilter filter) {
+        if (filter.getStatus() != null) {
+            sql.append("and r.status = ? ");
+            params.add(filter.getStatus());
+        }
+        if (filter.getEvidenceType() != null) {
+            sql.append("and r.evidence_type = ? ");
+            params.add(filter.getEvidenceType());
+        }
+        if (filter.getWithinHours() != null) {
+            sql.append("and r.created_at >= now() - interval ? hour ");
+            params.add(filter.getWithinHours());
+        }
+        if (filter.isWithPhotoOnly()) {
+            sql.append("and r.image_url is not null and r.image_url <> '' ");
+        }
+    }
+
+    /**
+     * The ordering is picked from a fixed set in {@link ReportFeedFilter}, so
+     * the clause appended here is never caller-supplied text. `comment_count`
+     * and `sub_report_count` are the projection's own aliases.
+     */
+    private static void appendFeedOrder(StringBuilder sql, List<Object> params,
+                                        ReportFeedFilter filter, Double longitude, Double latitude) {
+        switch (filter.getSort()) {
+            case ReportFeedFilter.SORT_NEWEST ->
+                    sql.append("order by r.created_at desc ");
+            case ReportFeedFilter.SORT_OLDEST ->
+                    sql.append("order by r.created_at asc ");
+            case ReportFeedFilter.SORT_TOP ->
+                    sql.append("order by (r.upvote_count - r.downvote_count) desc, r.created_at desc ");
+            case ReportFeedFilter.SORT_DISCUSSED ->
+                    sql.append("order by comment_count desc, r.created_at desc ");
+            case ReportFeedFilter.SORT_CONFIRMED ->
+                    sql.append("order by sub_report_count desc, r.created_at desc ");
+            default -> {
+                sql.append("order by ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) asc ");
+                params.add(longitude);
+                params.add(latitude);
+            }
         }
     }
 

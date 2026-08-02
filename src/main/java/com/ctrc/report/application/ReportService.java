@@ -96,6 +96,39 @@ public class ReportService {
         }
     }
 
+    /**
+     * Edits a report the caller filed. Only the text side changes; where the
+     * report was pinned stays as it was, because moving an incident after
+     * people have voted on it would make their votes mean something else.
+     */
+    @Transactional
+    public Report updateReport(Long reportId, Long userId,
+                               com.ctrc.report.application.dto.UpdateReportRequest request) {
+        Report existing = reportRepository.findById(reportId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("report not found with id " + reportId));
+
+        if (!existing.getUserId().equals(userId)) {
+            throw new com.ctrc.core.domain.exceptions.ValidationException(
+                    "you can only edit a report you filed yourself");
+        }
+
+        Report changes = new Report();
+        changes.setReportId(reportId);
+        changes.setUserId(userId);
+        changes.setTitle(request.getTitle());
+        changes.setDescription(request.getDescription());
+        changes.setCategory(request.getCategory());
+        changes.setEvidenceType(request.getEvidenceType());
+        changes.setImageUrl(request.getImageUrl());
+
+        int updated = reportRepository.update(changes);
+        if (updated == 0) {
+            throw new ResourceNotFoundException("report not found with id " + reportId);
+        }
+
+        return getReportById(reportId, userId);
+    }
+
     public Report getReportById(Long reportId, Long currentUserId) {
         Report report = reportRepository.findByIdWithLocation(reportId, currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("report not found with id " + reportId));
@@ -113,9 +146,11 @@ public class ReportService {
         return reportRepository.findAll(currentUserId);
     }
 
-    public List<Report> getNearbyReports(Double latitude, Double longitude, Double radiusInKm, String category, Long currentUserId) {
+    public List<Report> getNearbyReports(Double latitude, Double longitude, Double radiusInKm, String category,
+                                         com.ctrc.report.domain.ReportFeedFilter filter, Long currentUserId) {
         Double radiusInMeters = radiusInKm * 1000;
-        return reportRepository.findNearby(latitude, longitude, radiusInMeters, category, currentUserId, ReportRepository.DEFAULT_LIMIT);
+        return reportRepository.findNearby(latitude, longitude, radiusInMeters, category, filter,
+                currentUserId, ReportRepository.DEFAULT_LIMIT);
     }
 
     public List<Report> getUserReports(Long userId, Long currentUserId) {
