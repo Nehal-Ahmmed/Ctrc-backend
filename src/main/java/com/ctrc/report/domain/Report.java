@@ -3,6 +3,7 @@ package com.ctrc.report.domain;
 import com.ctrc.location.domain.Location;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 // plain model matching the report table, includes location for joined reads
 public class Report {
@@ -13,6 +14,13 @@ public class Report {
     private String title;
     private String description;
     private String category;
+
+    // how the reporter knows: 'seen', 'heard' or 'guessed'
+    private String evidenceType;
+
+    // 'unverified', 'verified' or 'disputed', maintained by a db trigger
+    private String status;
+
     private Integer upvoteCount;
     private Integer downvoteCount;
     private Integer commentCount;
@@ -32,7 +40,30 @@ public class Report {
     // 'up', 'down', or null representing the current user's vote
     private String userVoteType;
 
+    // how many updates (sub-reports) hang off this incident; counted on every
+    // list read so a card can say "3 updates" without loading them
+    private Integer subReportCount;
+
+    // the updates themselves, filled in only for the single-report read
+    private List<SubReport> subReports;
+
     public Report() {
+    }
+
+    public Integer getSubReportCount() {
+        return subReportCount;
+    }
+
+    public void setSubReportCount(Integer subReportCount) {
+        this.subReportCount = subReportCount;
+    }
+
+    public List<SubReport> getSubReports() {
+        return subReports;
+    }
+
+    public void setSubReports(List<SubReport> subReports) {
+        this.subReports = subReports;
     }
 
     public Long getReportId() {
@@ -81,6 +112,22 @@ public class Report {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public String getEvidenceType() {
+        return evidenceType;
+    }
+
+    public void setEvidenceType(String evidenceType) {
+        this.evidenceType = evidenceType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Integer getUpvoteCount() {

@@ -54,6 +54,9 @@ public class ReportRepositoryImpl implements ReportRepository {
             "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
             + "u.name as author_name, u.image_url as author_image_url, "
             + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
+            // Counted here rather than per-row in Java: one pass gives every
+            // card its "N updates" badge without an N+1 lookup.
+            + "(select count(*) from sub_report sr2 where sr2.report_id = r.report_id) as sub_report_count, "
             + "v.vote_type as user_vote_type, "
             // CASE rather than `(... is not null) as is_saved`: a bare boolean
             // expression with an alias is the kind of thing older MySQL /
@@ -78,12 +81,33 @@ public class ReportRepositoryImpl implements ReportRepository {
         report.setCategory(rs.getString("category"));
         report.setUpvoteCount(rs.getInt("upvote_count"));
         report.setDownvoteCount(rs.getInt("downvote_count"));
-        
+
+        try {
+            report.setEvidenceType(rs.getString("evidence_type"));
+        } catch (java.sql.SQLException e) {
+            report.setEvidenceType("seen");
+        }
+
+        try {
+            report.setStatus(rs.getString("status"));
+        } catch (java.sql.SQLException e) {
+            report.setStatus("unverified");
+        }
+
+
         try {
             int commentCount = rs.getInt("comment_count");
             report.setCommentCount(commentCount);
         } catch (java.sql.SQLException e) {
             report.setCommentCount(0);
+        }
+
+        // Not every query selects this column, so a missing one means zero
+        // rather than a failed read.
+        try {
+            report.setSubReportCount(rs.getInt("sub_report_count"));
+        } catch (java.sql.SQLException e) {
+            report.setSubReportCount(0);
         }
 
         try {
@@ -129,8 +153,11 @@ public class ReportRepositoryImpl implements ReportRepository {
 
     @Override
     public Long insert(Report report) {
+        // A report with no expiry would sit on the map forever, so one is
+        // filled in here when the caller did not supply it.
         String sql = "insert into report (user_id, location_id, title, description, category, "
-                + "upvote_count, downvote_count, expires_at) values (?, ?, ?, ?, ?, 0, 0, ?)";
+                + "evidence_type, upvote_count, downvote_count, expires_at) "
+                + "values (?, ?, ?, ?, ?, ?, 0, 0, coalesce(?, now() + interval 3 hour))";
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
@@ -140,10 +167,11 @@ public class ReportRepositoryImpl implements ReportRepository {
             ps.setString(3, report.getTitle());
             ps.setString(4, report.getDescription());
             ps.setString(5, report.getCategory());
+            ps.setString(6, report.getEvidenceType() != null ? report.getEvidenceType() : "seen");
             if (report.getExpiresAt() != null) {
-                ps.setTimestamp(6, Timestamp.valueOf(report.getExpiresAt()));
+                ps.setTimestamp(7, Timestamp.valueOf(report.getExpiresAt()));
             } else {
-                ps.setTimestamp(6, null);
+                ps.setTimestamp(7, null);
             }
             return ps;
         }, keyHolder);

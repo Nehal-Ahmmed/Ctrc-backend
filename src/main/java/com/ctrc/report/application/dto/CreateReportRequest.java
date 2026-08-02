@@ -16,7 +16,10 @@ public class CreateReportRequest {
     private String description;
 
     private String category;
-    
+
+    // 'seen', 'heard' or 'guessed'
+    private String evidenceType;
+
     private Long parentReportId;
 
     @NotNull(message = "is required")
@@ -90,6 +93,14 @@ public class CreateReportRequest {
 
     public void setCity(String city) {
         this.city = city;
+    }
+
+    public String getEvidenceType() {
+        return evidenceType;
+    }
+
+    public void setEvidenceType(String evidenceType) {
+        this.evidenceType = evidenceType;
     }
 
     public Long getParentReportId() {

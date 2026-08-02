@@ -11,15 +11,53 @@ public class SubReport {
     private Long reportId; // The parent report ID
     private Long locationId;
     private String description;
+
+    // how the reporter knows: 'seen', 'heard' or 'guessed'
+    private String evidenceType;
+
+    // what the reporter thinks the incident is; promotes an 'Unknown' parent
+    private String category;
+
     private Double distFromParent;
     private Integer upvoteCount;
     private Integer downvoteCount;
     private LocalDateTime createdAt;
-    
+
+    // comments hang off sub_report_id via the dual-FK comment table
+    private Integer commentCount;
+
     // populated when fetched with location
     private Location location;
 
+    // joined server side so an update renders without a second lookup
+    private String authorName;
+    private String authorImageUrl;
+
     public SubReport() {
+    }
+
+    public Integer getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(Integer commentCount) {
+        this.commentCount = commentCount;
+    }
+
+    public String getAuthorName() {
+        return authorName;
+    }
+
+    public void setAuthorName(String authorName) {
+        this.authorName = authorName;
+    }
+
+    public String getAuthorImageUrl() {
+        return authorImageUrl;
+    }
+
+    public void setAuthorImageUrl(String authorImageUrl) {
+        this.authorImageUrl = authorImageUrl;
     }
 
     public Long getSubReportId() {
@@ -60,6 +98,22 @@ public class SubReport {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getEvidenceType() {
+        return evidenceType;
+    }
+
+    public void setEvidenceType(String evidenceType) {
+        this.evidenceType = evidenceType;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public Double getDistFromParent() {
