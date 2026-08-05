@@ -4,13 +4,6 @@ import com.ctrc.core.domain.exceptions.ValidationException;
 
 import java.util.Set;
 
-/**
- * How the feed is narrowed down and ordered.
- *
- * <p>Every value a caller may send is checked against a fixed set right here,
- * so the sql the repository stitches together — an order-by clause cannot be a
- * bind parameter — can only ever contain wording this class already knows.
- */
 public class ReportFeedFilter {
 
     public static final String SORT_NEAREST = "nearest";
@@ -23,15 +16,12 @@ public class ReportFeedFilter {
     private static final Set<String> SORTS = Set.of(
             SORT_NEAREST, SORT_NEWEST, SORT_OLDEST, SORT_TOP, SORT_DISCUSSED, SORT_CONFIRMED);
 
-    /** Set by the vote triggers, never by the app. */
     private static final Set<String> STATUSES = Set.of("unverified", "verified", "disputed");
 
     private static final Set<String> EVIDENCE_TYPES = Set.of("seen", "heard", "guessed");
 
-    /** A month is already far beyond any live road condition. */
     private static final int MAX_WITHIN_HOURS = 24 * 30;
 
-    /** Closest first, nothing filtered out. What the feed asks for by default. */
     public static final ReportFeedFilter DEFAULT =
             new ReportFeedFilter(SORT_NEAREST, null, null, null, false);
 
@@ -50,11 +40,6 @@ public class ReportFeedFilter {
         this.withPhotoOnly = withPhotoOnly;
     }
 
-    /**
-     * Builds a filter from raw request values. Blank means "not filtered";
-     * anything else that is not recognised is a bad request rather than a
-     * silently ignored parameter, so a typo in the app surfaces immediately.
-     */
     public static ReportFeedFilter of(String sort, String status, String evidenceType,
                                       Integer withinHours, Boolean withPhotoOnly) {
         String normalisedSort = normalise(sort);
@@ -90,7 +75,6 @@ public class ReportFeedFilter {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    /** Never null: falls back to {@link #SORT_NEAREST}. */
     public String getSort() {
         return sort;
     }

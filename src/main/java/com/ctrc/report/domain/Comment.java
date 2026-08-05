@@ -12,7 +12,36 @@ public class Comment {
     private String userName;
     private String userImageUrl;
 
+    private Integer upvoteCount;
+    private Integer downvoteCount;
+
+    private String userVoteType;
+
     public Comment() {}
+
+    public Integer getUpvoteCount() {
+        return upvoteCount;
+    }
+
+    public void setUpvoteCount(Integer upvoteCount) {
+        this.upvoteCount = upvoteCount;
+    }
+
+    public Integer getDownvoteCount() {
+        return downvoteCount;
+    }
+
+    public void setDownvoteCount(Integer downvoteCount) {
+        this.downvoteCount = downvoteCount;
+    }
+
+    public String getUserVoteType() {
+        return userVoteType;
+    }
+
+    public void setUserVoteType(String userVoteType) {
+        this.userVoteType = userVoteType;
+    }
 
     public Long getCommentId() {
         return commentId;

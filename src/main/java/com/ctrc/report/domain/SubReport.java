@@ -8,17 +8,14 @@ public class SubReport {
 
     private Long subReportId;
     private Long userId;
-    private Long reportId; // The parent report ID
+    private Long reportId; 
     private Long locationId;
     private String description;
 
-    // how the reporter knows: 'seen', 'heard' or 'guessed'
     private String evidenceType;
 
-    // what the reporter thinks the incident is; promotes an 'Unknown' parent
     private String category;
 
-    // photo of the incident, hosted on cloudinary
     private String imageUrl;
 
     private Double distFromParent;
@@ -26,15 +23,15 @@ public class SubReport {
     private Integer downvoteCount;
     private LocalDateTime createdAt;
 
-    // comments hang off sub_report_id via the dual-FK comment table
     private Integer commentCount;
 
-    // populated when fetched with location
     private Location location;
 
-    // joined server side so an update renders without a second lookup
     private String authorName;
     private String authorImageUrl;
+
+    private String userVoteType;
+    private String parentTitle;
 
     public SubReport() {
     }
@@ -45,6 +42,22 @@ public class SubReport {
 
     public void setCommentCount(Integer commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public String getUserVoteType() {
+        return userVoteType;
+    }
+
+    public void setUserVoteType(String userVoteType) {
+        this.userVoteType = userVoteType;
+    }
+
+    public String getParentTitle() {
+        return parentTitle;
+    }
+
+    public void setParentTitle(String parentTitle) {
+        this.parentTitle = parentTitle;
     }
 
     public String getAuthorName() {

@@ -17,9 +17,12 @@ import java.util.List;
 public class ReportController {
 
     private final ReportService reportService;
+    private final com.ctrc.report.application.CommentService commentService;
 
-    public ReportController(ReportService reportService) {
+    public ReportController(ReportService reportService,
+                            com.ctrc.report.application.CommentService commentService) {
         this.reportService = reportService;
+        this.commentService = commentService;
     }
 
     @PostMapping
@@ -29,11 +32,6 @@ public class ReportController {
         return ApiResponse.success(report);
     }
 
-    /**
-     * Uploads one photo and hands back its link. The app calls this first,
-     * then sends the returned url as {@code imageUrl} when it creates the
-     * report, so the create endpoint stays plain JSON.
-     */
     @PostMapping("/upload-image")
     public ApiResponse<java.util.Map<String, String>> uploadImage(
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
@@ -57,11 +55,6 @@ public class ReportController {
         return ApiResponse.success(reportService.getAllReports(userId));
     }
 
-    /**
-     * The home feed. Beyond the radius and the category chip, the app can ask
-     * for a narrower slice and a different ordering; all of it is resolved in
-     * the query rather than by re-sorting the list on the device.
-     */
     @GetMapping("/nearby")
     public ApiResponse<List<Report>> getNearbyReports(
             @RequestParam("lat") Double lat,
@@ -84,6 +77,14 @@ public class ReportController {
             @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody com.ctrc.report.application.dto.UpdateReportRequest request) {
         return ApiResponse.success(reportService.updateReport(id, userId, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteReport(
+            @PathVariable("id") Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+        reportService.deleteReport(id, userId);
+        return ApiResponse.success(null);
     }
 
     @PostMapping("/{id}/vote")
@@ -128,14 +129,12 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/comments")
-    public ApiResponse<List<com.ctrc.report.domain.Comment>> getComments(@PathVariable("id") Long id) {
-        return ApiResponse.success(reportService.getComments(id));
+    public ApiResponse<List<com.ctrc.report.domain.Comment>> getComments(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        return ApiResponse.success(commentService.getReportComments(id, userId));
     }
 
-    /**
-     * Incidents within {@code corridorKm} of a route. One call replaces the
-     * client probing /nearby repeatedly along a long trip.
-     */
     @PostMapping("/along-route")
     public ApiResponse<List<com.ctrc.report.application.dto.RouteHazardDto>> getReportsAlongRoute(
             @Valid @RequestBody com.ctrc.report.application.dto.RouteScanRequest request,

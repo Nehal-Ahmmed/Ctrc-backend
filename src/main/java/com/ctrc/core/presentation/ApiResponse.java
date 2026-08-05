@@ -1,6 +1,5 @@
 package com.ctrc.core.presentation;
 
-// standard response shape for every endpoint, success or failure
 public class ApiResponse<T> {
 
     private boolean success;

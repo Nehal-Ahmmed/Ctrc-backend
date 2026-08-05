@@ -1,6 +1,5 @@
 package com.ctrc.report.application.dto;
 
-/** A single lat/lng pair on a route. */
 public class GeoPointDto {
 
     private Double lat;

@@ -11,7 +11,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// catches exceptions thrown anywhere in controllers and turns them into a clean api response
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -33,7 +32,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // handles @valid annotation failures on request bodies
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
@@ -44,12 +42,9 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
-    // catch all fallback for anything unexpected
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
-        // Spring wraps driver errors, so ex.getMessage() alone shows the SQL we
-        // sent but not what the database actually objected to. Log the whole
-        // trace and put the root cause in the response.
+
         log.error("Unhandled exception", ex);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -58,7 +53,6 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    /** Walks to the innermost cause, which is where the real reason lives. */
     private static String rootCauseOf(Throwable ex) {
         Throwable cause = ex;
         while (cause.getCause() != null && cause.getCause() != cause) {

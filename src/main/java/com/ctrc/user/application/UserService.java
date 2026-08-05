@@ -36,7 +36,7 @@ public class UserService {
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword()); // Plain text per instructions
+        user.setPassword(request.getPassword()); 
         user.setAddress(request.getAddress());
         user.setImageUrl(request.getImageUrl());
 
@@ -47,9 +47,8 @@ public class UserService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid email or password"));
 
-        // Plain text comparison per instructions
         if (!user.getPassword().equals(request.getPassword())) {
-            throw new ResourceNotFoundException("Invalid email or password"); // Vague error for security
+            throw new ResourceNotFoundException("Invalid email or password"); 
         }
 
         return user;
@@ -82,7 +81,6 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Plain text comparison, matching signup/login above
         if (!user.getPassword().equals(request.getCurrentPassword())) {
             throw new ValidationException("Current password is incorrect");
         }

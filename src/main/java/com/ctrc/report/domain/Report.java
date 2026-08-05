@@ -5,7 +5,6 @@ import com.ctrc.location.domain.Location;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// plain model matching the report table, includes location for joined reads
 public class Report {
 
     private Long reportId;
@@ -15,17 +14,14 @@ public class Report {
     private String description;
     private String category;
 
-    // how the reporter knows: 'seen', 'heard' or 'guessed'
     private String evidenceType;
 
-    // 'unverified', 'verified' or 'disputed', maintained by a db trigger
     private String status;
 
-    // photo of the incident, hosted on cloudinary
     private String imageUrl;
 
-    // null until the author edits the report
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
 
     private Integer upvoteCount;
     private Integer downvoteCount;
@@ -33,24 +29,17 @@ public class Report {
     private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
 
-    // populated when report is fetched with its location joined, not a db column
     private Location location;
 
-    // joined from the user table so clients don't have to resolve the author
     private String authorName;
     private String authorImageUrl;
 
-    // true when the requesting user (X-User-Id) has bookmarked this report
     private Boolean isSaved;
 
-    // 'up', 'down', or null representing the current user's vote
     private String userVoteType;
 
-    // how many updates (sub-reports) hang off this incident; counted on every
-    // list read so a card can say "3 updates" without loading them
     private Integer subReportCount;
 
-    // the updates themselves, filled in only for the single-report read
     private List<SubReport> subReports;
 
     public Report() {
@@ -150,6 +139,14 @@ public class Report {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     public Integer getUpvoteCount() {

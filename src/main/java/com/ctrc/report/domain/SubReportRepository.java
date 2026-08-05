@@ -9,10 +9,7 @@ public interface SubReportRepository {
 
     Optional<SubReport> findById(Long subReportId);
 
-    /**
-     * Every update filed against a parent report, oldest first, with its
-     * location and author joined in so the client can render the thread
-     * without a second round trip.
-     */
+    Optional<SubReport> findByIdWithLocation(Long subReportId, Long currentUserId);
+
     List<SubReport> findByReportId(Long reportId);
 }

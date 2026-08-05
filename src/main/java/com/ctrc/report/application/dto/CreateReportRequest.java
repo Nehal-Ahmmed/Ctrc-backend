@@ -3,9 +3,6 @@ package com.ctrc.report.application.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-// request body for creating a new report
-// user_id is temporary here until module 2 auth is ready, will be replaced
-// by the authenticated user once login is wired up
 public class CreateReportRequest {
 
     @NotNull(message = "is required")
@@ -17,10 +14,8 @@ public class CreateReportRequest {
 
     private String category;
 
-    // 'seen', 'heard' or 'guessed'
     private String evidenceType;
 
-    // cloudinary link, uploaded separately before the report is submitted
     private String imageUrl;
 
     private Long parentReportId;

@@ -25,15 +25,6 @@ public class ReportRepositoryImpl implements ReportRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    /**
-     * Hides reports whose lifetime has already elapsed. An incident that has
-     * expired is no longer a live road condition, so it must not reach the feed
-     * or the map.
-     */
-    /**
-     * No user can own this id, so for anonymous callers the viewer-specific
-     * subqueries simply match nothing instead of binding a NULL parameter.
-     */
     private static final long ANONYMOUS_VIEWER = -1L;
 
     private static long viewer(Long viewerUserId) {
@@ -43,32 +34,20 @@ public class ReportRepositoryImpl implements ReportRepository {
     private static final String NOT_EXPIRED =
             "(r.expires_at is null or r.expires_at > now()) ";
 
-    /**
-     * Shared projection for every "rich" read: report + location + author +
-     * the two viewer-specific flags.
-     *
-     * <p>The two {@code ?} placeholders in the correlated subqueries are always
-     * the first two bind parameters, so callers pass the viewer id twice before
-     * their own arguments.
-     */
     private static final String SELECT_WITH_LOCATION =
             "select r.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
             + "u.name as author_name, u.image_url as author_image_url, "
             + "(select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
-            // Counted here rather than per-row in Java: one pass gives every
-            // card its "N updates" badge without an N+1 lookup.
+
             + "(select count(*) from sub_report sr2 where sr2.report_id = r.report_id) as sub_report_count, "
             + "v.vote_type as user_vote_type, "
-            // CASE rather than `(... is not null) as is_saved`: a bare boolean
-            // expression with an alias is the kind of thing older MySQL /
-            // MariaDB builds are picky about.
+
             + "case when sv.saved_report_id is null then 0 else 1 end as is_saved "
             + "from report r "
             + "join location l on r.location_id = l.location_id "
-            // `user` is backticked because it is a keyword in several engines.
+
             + "left join `user` u on u.user_id = r.user_id "
-            // Joined instead of correlated-subqueried: same result, one pass,
-            // and the viewer id stays as the first two bind parameters.
+
             + "left join vote v on v.report_id = r.report_id and v.user_id = ? "
             + "left join saved_report sv on sv.report_id = r.report_id and sv.user_id = ? ";
 
@@ -110,7 +89,6 @@ public class ReportRepositoryImpl implements ReportRepository {
             report.setUpdatedAt(null);
         }
 
-
         try {
             int commentCount = rs.getInt("comment_count");
             report.setCommentCount(commentCount);
@@ -118,8 +96,6 @@ public class ReportRepositoryImpl implements ReportRepository {
             report.setCommentCount(0);
         }
 
-        // Not every query selects this column, so a missing one means zero
-        // rather than a failed read.
         try {
             report.setSubReportCount(rs.getInt("sub_report_count"));
         } catch (java.sql.SQLException e) {
@@ -149,7 +125,6 @@ public class ReportRepositoryImpl implements ReportRepository {
         return report;
     };
 
-    // maps a report joined with its location row in one query
     private static final RowMapper<Report> ROW_MAPPER_WITH_LOCATION = (rs, rowNum) -> {
         Report report = ROW_MAPPER.mapRow(rs, rowNum);
 
@@ -169,8 +144,7 @@ public class ReportRepositoryImpl implements ReportRepository {
 
     @Override
     public Long insert(Report report) {
-        // A report with no expiry would sit on the map forever, so one is
-        // filled in here when the caller did not supply it.
+
         String sql = "insert into report (user_id, location_id, title, description, category, "
                 + "evidence_type, image_url, upvote_count, downvote_count, expires_at) "
                 + "values (?, ?, ?, ?, ?, ?, ?, 0, 0, coalesce(?, now() + interval 3 hour))";
@@ -214,6 +188,12 @@ public class ReportRepositoryImpl implements ReportRepository {
     }
 
     @Override
+    public int softDelete(Long reportId, Long userId) {
+        String sql = "UPDATE report SET deleted_at = now() WHERE report_id = ? AND user_id = ?";
+        return jdbcTemplate.update(sql, reportId, userId);
+    }
+
+    @Override
     public Optional<Report> findById(Long reportId, Long viewerUserId) {
         String sql = "select r.*, (select count(*) from comment c where c.report_id = r.report_id) as comment_count, "
                 + "v.vote_type as user_vote_type, "
@@ -221,7 +201,7 @@ public class ReportRepositoryImpl implements ReportRepository {
                 + "from report r "
                 + "left join vote v on v.report_id = r.report_id and v.user_id = ? "
                 + "left join saved_report sv on sv.report_id = r.report_id and sv.user_id = ? "
-                + "where r.report_id = ?";
+                + "where r.report_id = ? and r.deleted_at is null";
         List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER, viewer(viewerUserId), viewer(viewerUserId), reportId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
@@ -229,7 +209,7 @@ public class ReportRepositoryImpl implements ReportRepository {
     @Override
     public Optional<Report> findByIdWithLocation(Long reportId, Long viewerUserId) {
         String sql = SELECT_WITH_LOCATION
-                + "where r.report_id = ?";
+                + "where r.report_id = ? and r.deleted_at is null";
         List<Report> results = jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),reportId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
@@ -237,6 +217,7 @@ public class ReportRepositoryImpl implements ReportRepository {
     @Override
     public List<Report> findAll(Long viewerUserId) {
         String sql = SELECT_WITH_LOCATION
+                + "where r.deleted_at is null "
                 + "order by r.created_at desc limit " + DEFAULT_LIMIT;
         return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId));
     }
@@ -246,15 +227,13 @@ public class ReportRepositoryImpl implements ReportRepository {
                                    String category, ReportFeedFilter filter, Long viewerUserId, int limit) {
         ReportFeedFilter feedFilter = filter != null ? filter : ReportFeedFilter.DEFAULT;
 
-        // Built up alongside the sql because the number of bind values now
-        // depends on which filters the caller switched on, and on whether the
-        // chosen ordering needs the viewer's position a second time.
         List<Object> params = new java.util.ArrayList<>();
         params.add(viewer(viewerUserId));
         params.add(viewer(viewerUserId));
 
         StringBuilder sql = new StringBuilder(SELECT_WITH_LOCATION)
                 .append("where ").append(NOT_EXPIRED)
+                .append("and r.deleted_at is null ")
                 .append("and ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(?, ?)) <= ? ");
         params.add(longitude);
         params.add(latitude);
@@ -293,11 +272,6 @@ public class ReportRepositoryImpl implements ReportRepository {
         }
     }
 
-    /**
-     * The ordering is picked from a fixed set in {@link ReportFeedFilter}, so
-     * the clause appended here is never caller-supplied text. `comment_count`
-     * and `sub_report_count` are the projection's own aliases.
-     */
     private static void appendFeedOrder(StringBuilder sql, List<Object> params,
                                         ReportFeedFilter filter, Double longitude, Double latitude) {
         switch (filter.getSort()) {
@@ -334,7 +308,7 @@ public class ReportRepositoryImpl implements ReportRepository {
     @Override
     public List<Report> findByUserId(Long userId, Long viewerUserId) {
         String sql = SELECT_WITH_LOCATION
-                + "where r.user_id = ? "
+                + "where r.user_id = ? and r.deleted_at is null "
                 + "order by r.created_at desc limit " + DEFAULT_LIMIT;
         return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId);
     }
@@ -343,7 +317,7 @@ public class ReportRepositoryImpl implements ReportRepository {
     public List<Report> findSavedByUserId(Long userId, Long viewerUserId) {
         String sql = SELECT_WITH_LOCATION
                 + "join saved_report sr on sr.report_id = r.report_id "
-                + "where sr.user_id = ? "
+                + "where sr.user_id = ? and r.deleted_at is null "
                 + "order by sr.saved_at desc limit " + DEFAULT_LIMIT;
         return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, viewer(viewerUserId), viewer(viewerUserId),userId);
     }
@@ -354,8 +328,9 @@ public class ReportRepositoryImpl implements ReportRepository {
                                                String category, Long viewerUserId, int limit) {
         String sql = SELECT_WITH_LOCATION
                 + "where " + NOT_EXPIRED
+                + "and r.deleted_at is null "
                 + "and l.latitude >= ? and l.latitude <= ? and l.longitude >= ? and l.longitude <= ? ";
-        
+
         if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
             sql += "and r.category = ? ";
             sql += "limit " + limit;

@@ -1,6 +1,5 @@
 package com.ctrc.location.domain;
 
-// plain model matching the location table
 public class Location {
 
     private Long locationId;

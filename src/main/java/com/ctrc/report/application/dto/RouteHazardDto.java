@@ -2,15 +2,12 @@ package com.ctrc.report.application.dto;
 
 import com.ctrc.report.domain.Report;
 
-/** A report that sits inside the route corridor, with its position relative to the road. */
 public class RouteHazardDto {
 
     private Report report;
 
-    /** Perpendicular distance from the centre line of the road, in meters. */
     private double offsetMeters;
 
-    /** How far along the route the incident sits, in meters. Used for ordering. */
     private double alongMeters;
 
     public RouteHazardDto() {
