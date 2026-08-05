@@ -3,7 +3,6 @@ package com.ctrc.user.application.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-// request body for changing the signed-in user's password
 public class ChangePasswordRequest {
 
     @NotBlank(message = "is required")

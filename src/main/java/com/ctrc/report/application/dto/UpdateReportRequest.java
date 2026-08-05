@@ -2,8 +2,6 @@ package com.ctrc.report.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-// request body for editing a report you already filed
-// only the text side is editable, the location a report was filed at stays put
 public class UpdateReportRequest {
 
     @NotBlank(message = "is required")
@@ -14,10 +12,8 @@ public class UpdateReportRequest {
     @NotBlank(message = "is required")
     private String category;
 
-    // 'seen', 'heard' or 'guessed'
     private String evidenceType;
 
-    // null clears the photo
     private String imageUrl;
 
     public String getTitle() {

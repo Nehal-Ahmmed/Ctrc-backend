@@ -34,7 +34,7 @@ public class VoteRepositoryImpl implements VoteRepository {
             vote.setUserName(rs.getString("user_name"));
             vote.setUserImageUrl(rs.getString("user_image_url"));
         } catch (java.sql.SQLException e) {
-            // ignore if not present in query result
+
         }
         return vote;
     };
@@ -73,6 +73,13 @@ public class VoteRepositoryImpl implements VoteRepository {
     }
 
     @Override
+    public Optional<Vote> findByUserAndSubReport(Long userId, Long subReportId) {
+        String sql = "SELECT * FROM vote WHERE user_id = ? AND sub_report_id = ?";
+        List<Vote> results = jdbcTemplate.query(sql, ROW_MAPPER, userId, subReportId);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    @Override
     public void delete(Long voteId) {
         String sql = "DELETE FROM vote WHERE vote_id = ?";
         jdbcTemplate.update(sql, voteId);
@@ -86,5 +93,15 @@ public class VoteRepositoryImpl implements VoteRepository {
                 + "WHERE v.report_id = ? "
                 + "ORDER BY v.voted_at DESC";
         return jdbcTemplate.query(sql, ROW_MAPPER, reportId);
+    }
+
+    @Override
+    public List<Vote> findBySubReportId(Long subReportId) {
+        String sql = "SELECT v.*, u.name AS user_name, u.image_url AS user_image_url "
+                + "FROM vote v "
+                + "JOIN user u ON v.user_id = u.user_id "
+                + "WHERE v.sub_report_id = ? "
+                + "ORDER BY v.voted_at DESC";
+        return jdbcTemplate.query(sql, ROW_MAPPER, subReportId);
     }
 }

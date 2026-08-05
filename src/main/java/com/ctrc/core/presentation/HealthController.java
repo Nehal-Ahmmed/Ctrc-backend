@@ -4,7 +4,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// simple endpoint to confirm the backend is up
 @RestController
 @RequestMapping("/api")
 public class HealthController {

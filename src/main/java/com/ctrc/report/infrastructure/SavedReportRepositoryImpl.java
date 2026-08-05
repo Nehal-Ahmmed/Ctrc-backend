@@ -30,7 +30,7 @@ public class SavedReportRepositoryImpl implements SavedReportRepository {
 
     @Override
     public void save(Long userId, Long reportId) {
-        // Use insert ignore to prevent duplicate entries if user saves multiple times rapidly
+
         String sql = "INSERT IGNORE INTO saved_report (user_id, report_id) VALUES (?, ?)";
         jdbcTemplate.update(sql, userId, reportId);
     }

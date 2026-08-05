@@ -1,6 +1,3 @@
--- Tables will be created in the currently selected database (defaultdb)
-
--- user table
 create table user (
     user_id bigint auto_increment primary key,
     name varchar(100) not null,
@@ -11,7 +8,6 @@ create table user (
     created_at timestamp default current_timestamp
 );
 
--- location table
 create table location (
     location_id bigint auto_increment primary key,
     longitude decimal(9,6) not null,
@@ -20,7 +16,6 @@ create table location (
     city varchar(100)
 );
 
--- report table
 create table report (
     report_id bigint auto_increment primary key,
     user_id bigint not null,
@@ -36,7 +31,6 @@ create table report (
     foreign key (location_id) references location(location_id)
 );
 
--- sub_report table
 create table sub_report (
     sub_report_id bigint auto_increment primary key,
     user_id bigint not null,
@@ -52,7 +46,6 @@ create table sub_report (
     foreign key (location_id) references location(location_id)
 );
 
--- incident_group table
 create table incident_group (
     group_id bigint auto_increment primary key,
     report_id bigint not null,
@@ -61,7 +54,6 @@ create table incident_group (
     foreign key (report_id) references report(report_id)
 );
 
--- comment table
 create table comment (
     comment_id bigint auto_increment primary key,
     user_id bigint not null,
@@ -78,7 +70,6 @@ create table comment (
     )
 );
 
--- vote table
 create table vote (
     vote_id bigint auto_increment primary key,
     user_id bigint not null,
@@ -96,7 +87,6 @@ create table vote (
     constraint chk_vote_type check (vote_type in ('up', 'down'))
 );
 
--- indexes
 create index idx_report_location on report(location_id);
 create index idx_report_user on report(user_id);
 create index idx_subreport_report on sub_report(report_id);
@@ -105,7 +95,6 @@ create index idx_comment_subreport on comment(sub_report_id);
 create unique index idx_vote_user_report on vote(user_id, report_id);
 create unique index idx_vote_user_subreport on vote(user_id, sub_report_id);
 
--- saved_report table
 create table saved_report (
     saved_report_id bigint auto_increment primary key,
     user_id bigint not null,

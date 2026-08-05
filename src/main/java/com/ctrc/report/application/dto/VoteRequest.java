@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public class VoteRequest {
     @NotBlank(message = "Vote type must be 'up' or 'down'")
-    private String type; // 'up' or 'down'
+    private String type; 
 
     public String getType() {
         return type;

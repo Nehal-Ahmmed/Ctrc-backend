@@ -10,7 +10,6 @@ public class UserUpdateDto {
     private String address;
     private String imageUrl;
 
-    // Getters and Setters
     public String getName() {
         return name;
     }

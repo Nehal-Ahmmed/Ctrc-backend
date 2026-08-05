@@ -7,7 +7,7 @@ public class Vote {
     private Long userId;
     private Long reportId;
     private Long subReportId;
-    private String voteType; // 'up' or 'down'
+    private String voteType; 
     private Timestamp votedAt;
     private String userName;
     private String userImageUrl;

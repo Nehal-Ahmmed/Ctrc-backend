@@ -1,26 +1,10 @@
--- CTRC schema6 : demo data
--- Run this AFTER schema5.sql, on the same database the app actually talks to.
--- Safe to run once. Running it twice will duplicate the reports.
-
 set sql_safe_updates = 0;
-
--- ---------------------------------------------------------------------------
--- Your own account. Put the email you log into the app with here, so the
--- saved reports at the end land on your profile. If the email is not found
--- it falls back to the newest account in the table.
--- ---------------------------------------------------------------------------
 
 set @my_email = 'nehal@gmail.com';
 
 set @me = coalesce(
     (select user_id from user where email = @my_email limit 1),
     (select user_id from user order by user_id desc limit 1));
-
--- ---------------------------------------------------------------------------
--- STEP 1 : demo users
--- The password below is a bcrypt hash. If it does not let you log in as these
--- users, it does not matter, they only need to exist as report authors.
--- ---------------------------------------------------------------------------
 
 insert into user (name, password, email, address) values
 ('Tanvir Ahmed',      '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'tanvir@ctrcdemo.test',   'Raozan, Chattogram'),
@@ -40,12 +24,6 @@ set @u_imran    = (select user_id from user where email = 'imran@ctrcdemo.test')
 set @u_farhana  = (select user_id from user where email = 'farhana@ctrcdemo.test');
 set @u_shahriar = (select user_id from user where email = 'shahriar@ctrcdemo.test');
 set @u_mim      = (select user_id from user where email = 'mim@ctrcdemo.test');
-
--- ---------------------------------------------------------------------------
--- STEP 2 : locations
--- First block is around CUET / Raozan / Chattogram for the nearby feature.
--- Second block follows the Chattogram to Dhaka highway for the route feature.
--- ---------------------------------------------------------------------------
 
 insert into location (longitude, latitude, address, city) values
 (91.970500, 22.462700, 'CUET Main Gate, Raozan',            'Chattogram'),
@@ -84,12 +62,6 @@ set @l_meghna     = (select location_id from location where address = 'Meghna Br
 set @l_kanchpur   = (select location_id from location where address = 'Kanchpur Bridge, Narayanganj' limit 1);
 set @l_jatrabari  = (select location_id from location where address = 'Jatrabari Flyover, Dhaka'     limit 1);
 
--- ---------------------------------------------------------------------------
--- STEP 3 : reports
--- upvote_count, downvote_count and status are left alone on purpose. The
--- votes inserted in step 5 fire trg_vote_insert, which fills them in.
--- ---------------------------------------------------------------------------
-
 insert into report (user_id, location_id, title, description, category, evidence_type, expires_at, created_at) values
 (@u_tanvir,   @l_cuet,       'Deep pothole at CUET main gate',        'A large pothole has opened right at the main gate turn. Two rickshaws have already tipped over this morning.', 'Road damage',  'seen',    now() + interval 12 hour, now() - interval 40 minute),
 (@u_sadia,    @l_pahartali,  'Heavy jam at Pahartali Bazar',          'Bazar day crowd has spilled onto the road, buses are barely moving in either direction.',                     'Traffic jam',  'seen',    now() + interval 12 hour, now() - interval 25 minute),
@@ -127,13 +99,6 @@ set @r_meghna      = (select report_id from report where location_id = @l_meghna
 set @r_kanchpur    = (select report_id from report where location_id = @l_kanchpur    limit 1);
 set @r_jatrabari   = (select report_id from report where location_id = @l_jatrabari   limit 1);
 
--- ---------------------------------------------------------------------------
--- STEP 4 : sub reports, so two incidents have a real thread under them
--- Their parents are already Accident, so trg_subreport_insert has nothing to
--- promote here. The two Unknown reports are deliberately left with no witness
--- so you can promote one live in front of your teacher.
--- ---------------------------------------------------------------------------
-
 insert into location (longitude, latitude, address, city) values
 (91.932500, 22.508000, 'Kaptai Road, 300m before the crash', 'Chattogram'),
 (91.927000, 22.512500, 'Kaptai Road, past the crash',        'Chattogram'),
@@ -161,12 +126,6 @@ update sub_report s
                                                point(l2.longitude, l2.latitude))
  where s.dist_from_parent is null;
 
--- ---------------------------------------------------------------------------
--- STEP 5 : votes
--- Every insert here fires trg_vote_insert, which is what actually fills in
--- upvote_count, downvote_count and status. Nothing is counted by hand.
--- ---------------------------------------------------------------------------
-
 insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_cuet, 'up' from user u
  where u.email in ('sadia@ctrcdemo.test','rakib@ctrcdemo.test','nusrat@ctrcdemo.test','imran@ctrcdemo.test');
@@ -179,13 +138,10 @@ insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_kaptai, 'up' from user u
  where u.email in ('tanvir@ctrcdemo.test','sadia@ctrcdemo.test','nusrat@ctrcdemo.test','imran@ctrcdemo.test','farhana@ctrcdemo.test','mim@ctrcdemo.test');
 
--- Only two upvotes on a guess, which needs five. Stays "Not verified yet".
 insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_noapara, 'up' from user u
  where u.email in ('tanvir@ctrcdemo.test','rakib@ctrcdemo.test');
 
--- Hearsay needs four upvotes and only has two, so this one stays unverified
--- even though it has as many votes as some verified reports.
 insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_hathazari, 'up' from user u
  where u.email in ('farhana@ctrcdemo.test','shahriar@ctrcdemo.test');
@@ -194,7 +150,6 @@ insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_baizid, 'up' from user u
  where u.email in ('tanvir@ctrcdemo.test','imran@ctrcdemo.test','shahriar@ctrcdemo.test');
 
--- More downvotes than upvotes, so this one flips to "Disputed".
 insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_oxygen, 'up' from user u
  where u.email in ('mim@ctrcdemo.test');
@@ -218,7 +173,6 @@ insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_feni, 'up' from user u
  where u.email in ('tanvir@ctrcdemo.test','sadia@ctrcdemo.test','nusrat@ctrcdemo.test','imran@ctrcdemo.test','farhana@ctrcdemo.test','shahriar@ctrcdemo.test','mim@ctrcdemo.test');
 
--- Hearsay, but five people backed it up, so it does reach "Verified".
 insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_chauddagram, 'up' from user u
  where u.email in ('tanvir@ctrcdemo.test','sadia@ctrcdemo.test','rakib@ctrcdemo.test','imran@ctrcdemo.test','mim@ctrcdemo.test');
@@ -231,7 +185,6 @@ insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_daudkandi, 'up' from user u
  where u.email in ('tanvir@ctrcdemo.test','rakib@ctrcdemo.test','imran@ctrcdemo.test','mim@ctrcdemo.test');
 
--- A guess with three upvotes, still two short of the five it needs.
 insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_meghna, 'up' from user u
  where u.email in ('sadia@ctrcdemo.test','nusrat@ctrcdemo.test','farhana@ctrcdemo.test');
@@ -244,10 +197,6 @@ insert into vote (user_id, report_id, vote_type)
 select u.user_id, @r_jatrabari, 'up' from user u
  where u.email in ('sadia@ctrcdemo.test','rakib@ctrcdemo.test','nusrat@ctrcdemo.test','imran@ctrcdemo.test','farhana@ctrcdemo.test','mim@ctrcdemo.test');
 
--- ---------------------------------------------------------------------------
--- STEP 6 : comments
--- ---------------------------------------------------------------------------
-
 insert into comment (user_id, report_id, sub_report_id, content, created_at) values
 (@u_sadia,    @r_cuet,        null, 'Went through there an hour back, it is worse than it looks in the photo.', now() - interval 30 minute),
 (@u_rakib,    @r_cuet,        null, 'CUET transport office has been informed.',                                 now() - interval 20 minute),
@@ -259,10 +208,6 @@ insert into comment (user_id, report_id, sub_report_id, content, created_at) val
 (@u_mim,      @r_chauddagram, null, 'Confirmed, my bus has been standing here for forty minutes.',                now() - interval 45 minute),
 (@u_sadia,    @r_meghna,      null, 'Same here, no idea what is ahead. Someone up front please report.',          now() - interval 8 minute);
 
--- ---------------------------------------------------------------------------
--- STEP 7 : a few reports saved to your own account
--- ---------------------------------------------------------------------------
-
 insert into saved_report (user_id, report_id)
 select @me, r.report_id
   from report r
@@ -270,17 +215,6 @@ select @me, r.report_id
    and @me is not null
    and not exists (select 1 from saved_report s
                     where s.user_id = @me and s.report_id = r.report_id);
-
--- ---------------------------------------------------------------------------
--- STEP 8 : keep the demo data alive until Friday
---
--- sp_refresh_demo slides the demo reports forward so the feed never shows a
--- three day old accident, and pushes their expiry out so nothing disappears
--- while you are presenting.
---
--- sp_add_daily_demo drops one genuinely new report in every morning, so the
--- app has something fresh each day instead of the same frozen list.
--- ---------------------------------------------------------------------------
 
 drop procedure if exists sp_refresh_demo;
 drop procedure if exists sp_add_daily_demo;
@@ -348,7 +282,6 @@ end //
 
 delimiter ;
 
--- Events. These need the MySQL event scheduler switched on, see the notes.
 drop event if exists ev_demo_keepalive;
 drop event if exists ev_demo_daily;
 
@@ -363,10 +296,6 @@ on schedule every 1 day
     starts '2026-08-03 08:00:00'
     ends '2026-08-08 00:00:00'
 do call sp_add_daily_demo();
-
--- ---------------------------------------------------------------------------
--- STEP 9 : check what landed
--- ---------------------------------------------------------------------------
 
 select r.report_id, r.title, r.category, r.evidence_type, r.status,
        r.upvote_count, r.downvote_count,

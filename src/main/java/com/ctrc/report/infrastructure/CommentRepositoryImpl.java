@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class CommentRepositoryImpl implements CommentRepository {
@@ -20,6 +21,19 @@ public class CommentRepositoryImpl implements CommentRepository {
     public CommentRepositoryImpl(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
+
+    private static final long ANONYMOUS_VIEWER = -1L;
+
+    private static long viewer(Long viewerUserId) {
+        return viewerUserId != null ? viewerUserId : ANONYMOUS_VIEWER;
+    }
+
+    private static final String SELECT_WITH_AUTHOR =
+            "select c.*, u.name as user_name, u.image_url as user_image_url, "
+            + "cv.vote_type as user_vote_type "
+            + "from comment c "
+            + "join `user` u on c.user_id = u.user_id "
+            + "left join comment_vote cv on cv.comment_id = c.comment_id and cv.user_id = ? ";
 
     private final RowMapper<Comment> ROW_MAPPER = (rs, rowNum) -> {
         Comment comment = new Comment();
@@ -33,7 +47,23 @@ public class CommentRepositoryImpl implements CommentRepository {
             comment.setUserName(rs.getString("user_name"));
             comment.setUserImageUrl(rs.getString("user_image_url"));
         } catch (java.sql.SQLException e) {
-            // ignore if not present in query result
+
+        }
+        
+        try {
+            comment.setUpvoteCount(rs.getInt("upvote_count"));
+        } catch (java.sql.SQLException e) {
+            comment.setUpvoteCount(0);
+        }
+        try {
+            comment.setDownvoteCount(rs.getInt("downvote_count"));
+        } catch (java.sql.SQLException e) {
+            comment.setDownvoteCount(0);
+        }
+        try {
+            comment.setUserVoteType(rs.getString("user_vote_type"));
+        } catch (java.sql.SQLException e) {
+            comment.setUserVoteType(null);
         }
         return comment;
     };
@@ -66,11 +96,34 @@ public class CommentRepositoryImpl implements CommentRepository {
 
     @Override
     public List<Comment> findByReportId(Long reportId) {
-        String sql = "SELECT c.*, u.name AS user_name, u.image_url AS user_image_url "
-                + "FROM comment c "
-                + "JOIN user u ON c.user_id = u.user_id "
-                + "WHERE c.report_id = ? "
-                + "ORDER BY c.created_at ASC";
-        return jdbcTemplate.query(sql, ROW_MAPPER, reportId);
+        return findByReportId(reportId, null);
+    }
+
+    @Override
+    public List<Comment> findBySubReportId(Long subReportId) {
+        return findBySubReportId(subReportId, null);
+    }
+
+    @Override
+    public List<Comment> findByReportId(Long reportId, Long viewerUserId) {
+        String sql = SELECT_WITH_AUTHOR
+                + "where c.report_id = ? "
+                + "order by c.created_at asc";
+        return jdbcTemplate.query(sql, ROW_MAPPER, viewer(viewerUserId), reportId);
+    }
+
+    @Override
+    public List<Comment> findBySubReportId(Long subReportId, Long viewerUserId) {
+        String sql = SELECT_WITH_AUTHOR
+                + "where c.sub_report_id = ? "
+                + "order by c.created_at asc";
+        return jdbcTemplate.query(sql, ROW_MAPPER, viewer(viewerUserId), subReportId);
+    }
+
+    @Override
+    public Optional<Comment> findById(Long commentId) {
+        List<Comment> results = jdbcTemplate.query(
+                "select c.* from comment c where c.comment_id = ?", ROW_MAPPER, commentId);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 }

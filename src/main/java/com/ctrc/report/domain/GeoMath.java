@@ -2,13 +2,6 @@ package com.ctrc.report.domain;
 
 import java.util.List;
 
-/**
- * Small geodesic helpers for the route-corridor scan.
- *
- * <p>Distances use a local equirectangular projection rather than full
- * haversine maths. Over the few kilometres a corridor spans the error is well
- * under a metre, and it keeps the per-report filter cheap.
- */
 public final class GeoMath {
 
     private static final double EARTH_RADIUS_METERS = 6378137.0;
@@ -16,7 +9,6 @@ public final class GeoMath {
     private GeoMath() {
     }
 
-    /** Great-circle distance in meters between two coordinates. */
     public static double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLng = Math.toRadians(lng2 - lng1);
@@ -26,7 +18,6 @@ public final class GeoMath {
         return 2 * EARTH_RADIUS_METERS * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    /** Perpendicular distance in meters from a point to the segment a-b. */
     public static double distanceToSegmentMeters(double pointLat, double pointLng,
                                                  double aLat, double aLng,
                                                  double bLat, double bLng) {
@@ -53,12 +44,6 @@ public final class GeoMath {
         return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
     }
 
-    /**
-     * Shortest distance in meters from a point to a polyline, along with how far
-     * along that polyline the closest point sits.
-     *
-     * @return {@code [offsetMeters, alongMeters]}
-     */
     public static double[] projectOnPolyline(double pointLat, double pointLng,
                                              List<double[]> path) {
         if (path.isEmpty()) {
@@ -93,12 +78,10 @@ public final class GeoMath {
         return new double[] {best, bestAlong};
     }
 
-    /** Degrees of latitude that correspond to a distance in meters. */
     public static double latitudeDegreesFor(double meters) {
         return meters / 111_320.0;
     }
 
-    /** Degrees of longitude that correspond to a distance in meters at a latitude. */
     public static double longitudeDegreesFor(double meters, double atLatitude) {
         double scale = Math.cos(Math.toRadians(atLatitude));
         if (Math.abs(scale) < 1e-6) {

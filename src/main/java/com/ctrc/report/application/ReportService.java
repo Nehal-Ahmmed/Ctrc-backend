@@ -26,6 +26,7 @@ public class ReportService {
     private final com.ctrc.report.domain.CommentRepository commentRepository;
     private final SavedReportRepository savedReportRepository;
     private final com.ctrc.core.services.CloudinaryService cloudinaryService;
+    private final com.ctrc.core.services.PushService pushService;
 
     public ReportService(ReportRepository reportRepository,
                          LocationRepository locationRepository,
@@ -34,7 +35,8 @@ public class ReportService {
                          com.ctrc.report.domain.VoteRepository voteRepository,
                          com.ctrc.report.domain.CommentRepository commentRepository,
                          SavedReportRepository savedReportRepository,
-                         com.ctrc.core.services.CloudinaryService cloudinaryService) {
+                         com.ctrc.core.services.CloudinaryService cloudinaryService,
+                         com.ctrc.core.services.PushService pushService) {
         this.reportRepository = reportRepository;
         this.locationRepository = locationRepository;
         this.subReportRepository = subReportRepository;
@@ -43,6 +45,7 @@ public class ReportService {
         this.commentRepository = commentRepository;
         this.savedReportRepository = savedReportRepository;
         this.cloudinaryService = cloudinaryService;
+        this.pushService = pushService;
     }
 
     public String uploadReportImage(org.springframework.web.multipart.MultipartFile file)
@@ -74,8 +77,6 @@ public class ReportService {
 
             subReportRepository.insert(subReport);
 
-            // Hand back the parent with its thread already rebuilt, so the
-            // client sees the update it just filed without a second call.
             return getReportById(request.getParentReportId(), request.getUserId());
         } else {
             Report report = new Report();
@@ -88,19 +89,17 @@ public class ReportService {
             report.setImageUrl(request.getImageUrl());
 
             Long reportId = reportRepository.insert(report);
-            
+
             incidentGroupRepository.insert(reportId, request.getTitle());
+
+            pushService.notifyArea(reportId, report.getTitle(), report.getCategory(),
+                    request.getLatitude(), request.getLongitude());
 
             return reportRepository.findByIdWithLocation(reportId, request.getUserId())
                     .orElseThrow(() -> new ResourceNotFoundException("report not found after creation"));
         }
     }
 
-    /**
-     * Edits a report the caller filed. Only the text side changes; where the
-     * report was pinned stays as it was, because moving an incident after
-     * people have voted on it would make their votes mean something else.
-     */
     @Transactional
     public Report updateReport(Long reportId, Long userId,
                                com.ctrc.report.application.dto.UpdateReportRequest request) {
@@ -129,17 +128,36 @@ public class ReportService {
         return getReportById(reportId, userId);
     }
 
+    @Transactional
+    public void deleteReport(Long reportId, Long userId) {
+        Report existing = reportRepository.findById(reportId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("report not found with id " + reportId));
+
+        if (!existing.getUserId().equals(userId)) {
+            throw new com.ctrc.core.domain.exceptions.ValidationException(
+                    "you can only delete a report you filed yourself");
+        }
+
+        int deleted = reportRepository.softDelete(reportId, userId);
+        if (deleted == 0) {
+            throw new ResourceNotFoundException("report not found with id " + reportId);
+        }
+    }
+
     public Report getReportById(Long reportId, Long currentUserId) {
         Report report = reportRepository.findByIdWithLocation(reportId, currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("report not found with id " + reportId));
 
-        // The detail view is the one place the whole incident thread is shown,
-        // so the linked updates are loaded here and nowhere else.
         List<SubReport> subReports = subReportRepository.findByReportId(reportId);
         report.setSubReports(subReports);
         report.setSubReportCount(subReports.size());
 
         return report;
+    }
+
+    public SubReport getSubReportById(Long subReportId, Long currentUserId) {
+        return subReportRepository.findByIdWithLocation(subReportId, currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("sub-report not found with id " + subReportId));
     }
 
     public List<Report> getAllReports(Long currentUserId) {
@@ -173,10 +191,7 @@ public class ReportService {
 
     @Transactional
     public void voteReport(Long reportId, Long userId, String type) {
-        // Voting the same way twice removes the vote, voting the other way
-        // replaces it. The upvote_count / downvote_count columns and the
-        // report status are maintained by the trg_vote_insert and
-        // trg_vote_delete triggers, so nothing is counted here.
+
         java.util.Optional<com.ctrc.report.domain.Vote> existingVote = voteRepository.findByUserAndReport(userId, reportId);
 
         if (existingVote.isPresent()) {
@@ -195,32 +210,60 @@ public class ReportService {
     }
 
     @Transactional
+    public void voteSubReport(Long subReportId, Long userId, String type) {
+
+        java.util.Optional<com.ctrc.report.domain.Vote> existingVote = voteRepository.findByUserAndSubReport(userId, subReportId);
+
+        if (existingVote.isPresent()) {
+            com.ctrc.report.domain.Vote vote = existingVote.get();
+            voteRepository.delete(vote.getVoteId());
+            if (vote.getVoteType().equals(type)) {
+                return;
+            }
+        }
+
+        com.ctrc.report.domain.Vote newVote = new com.ctrc.report.domain.Vote();
+        newVote.setSubReportId(subReportId);
+        newVote.setUserId(userId);
+        newVote.setVoteType(type);
+        voteRepository.insert(newVote);
+    }
+
+    @Transactional
     public void commentReport(Long reportId, Long userId, String content) {
         com.ctrc.report.domain.Comment comment = new com.ctrc.report.domain.Comment();
         comment.setReportId(reportId);
         comment.setUserId(userId);
         comment.setContent(content);
         commentRepository.insert(comment);
-        // comment_count is not a column on `report`; every read derives it with
-        // a subquery over `comment`, so there is nothing to increment here.
+
     }
 
     public List<com.ctrc.report.domain.Comment> getComments(Long reportId) {
         return commentRepository.findByReportId(reportId);
     }
 
+    @Transactional
+    public void commentSubReport(Long subReportId, Long userId, String content) {
+        com.ctrc.report.domain.Comment comment = new com.ctrc.report.domain.Comment();
+        comment.setSubReportId(subReportId);
+        comment.setUserId(userId);
+        comment.setContent(content);
+        commentRepository.insert(comment);
+    }
+
+    public List<com.ctrc.report.domain.Comment> getSubReportComments(Long subReportId) {
+        return commentRepository.findBySubReportId(subReportId);
+    }
+
     public List<com.ctrc.report.domain.Vote> getVotes(Long reportId) {
         return voteRepository.findByReportId(reportId);
     }
 
-    /**
-     * Incidents sitting within {@code corridorKm} either side of a route.
-     *
-     * <p>Runs in two passes: one indexed bounding-box query that pulls the
-     * candidates, then an exact point-to-polyline filter in memory. This
-     * replaces the client having to probe /nearby dozens of times along a long
-     * trip.
-     */
+    public List<com.ctrc.report.domain.Vote> getSubReportVotes(Long subReportId) {
+        return voteRepository.findBySubReportId(subReportId);
+    }
+
     public List<com.ctrc.report.application.dto.RouteHazardDto> getReportsAlongRoute(
             List<com.ctrc.report.application.dto.GeoPointDto> path,
             Double corridorKm,
@@ -257,7 +300,6 @@ public class ReportService {
             maxLng = Math.max(maxLng, point[1]);
         }
 
-        // Grow the box by the corridor so incidents beside the ends are included.
         double latPadding = com.ctrc.report.domain.GeoMath.latitudeDegreesFor(corridorMeters);
         double lngPadding = com.ctrc.report.domain.GeoMath.longitudeDegreesFor(
                 corridorMeters, Math.max(Math.abs(minLat), Math.abs(maxLat)));
@@ -288,6 +330,5 @@ public class ReportService {
         return hazards;
     }
 
-    /** Upper bound on the corridor width a caller may ask for. */
     private static final double MAX_CORRIDOR_METERS = 25_000;
 }

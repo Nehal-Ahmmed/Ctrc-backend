@@ -6,7 +6,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.context.annotation.Bean;
 
-// main entry point for the backend
 @SpringBootApplication
 public class CtrcBackendApplication {
 

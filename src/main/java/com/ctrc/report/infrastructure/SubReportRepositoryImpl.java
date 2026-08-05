@@ -48,12 +48,30 @@ public class SubReportRepositoryImpl implements SubReportRepository {
 
     @Override
     public Long insert(SubReport subReport) {
+        // Where the parent was pinned, looked up in its own statement rather
+        // than as a sub-select inside the insert below.
+        //
+        // trg_subreport_insert fires after this insert and updates `report`,
+        // and MySQL refuses to let a trigger write to a table the invoking
+        // statement is already reading (error 1442). Reading `report` here
+        // instead keeps the two apart. Filing an update with "I saw it myself"
+        // failed outright until this was split.
+        List<Long> parentLocation = jdbcTemplate.queryForList(
+                "select location_id from report where report_id = ?",
+                Long.class, subReport.getReportId());
+
+        if (parentLocation.isEmpty()) {
+            throw new com.ctrc.core.domain.exceptions.ResourceNotFoundException(
+                    "report not found with id " + subReport.getReportId());
+        }
+        final Long parentLocationId = parentLocation.get(0);
+
         String sql = "insert into sub_report (user_id, report_id, location_id, description, "
                    + "evidence_type, category, image_url, dist_from_parent, upvote_count, downvote_count) "
                    + "values (?, ?, ?, ?, ?, ?, ?, "
                    + "(select ST_Distance_Sphere(POINT(l1.longitude, l1.latitude), POINT(l2.longitude, l2.latitude)) "
                    + "from location l1 cross join location l2 "
-                   + "where l1.location_id = ? and l2.location_id = (select location_id from report where report_id = ?)), "
+                   + "where l1.location_id = ? and l2.location_id = ?), "
                    + "0, 0)";
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -68,7 +86,7 @@ public class SubReportRepositoryImpl implements SubReportRepository {
             ps.setString(6, subReport.getCategory());
             ps.setString(7, subReport.getImageUrl());
             ps.setLong(8, subReport.getLocationId());
-            ps.setLong(9, subReport.getReportId());
+            ps.setLong(9, parentLocationId);
             return ps;
         }, keyHolder);
 
@@ -82,10 +100,6 @@ public class SubReportRepositoryImpl implements SubReportRepository {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    /**
-     * Adds the location, the author and the comment tally to the base row, so
-     * one query produces everything an update needs on screen.
-     */
     private static final RowMapper<SubReport> ROW_MAPPER_WITH_LOCATION = (rs, rowNum) -> {
         SubReport subReport = ROW_MAPPER.mapRow(rs, rowNum);
 
@@ -101,22 +115,50 @@ public class SubReportRepositoryImpl implements SubReportRepository {
         subReport.setAuthorImageUrl(rs.getString("author_image_url"));
         subReport.setCommentCount(rs.getInt("comment_count"));
 
+        try {
+            subReport.setUserVoteType(rs.getString("user_vote_type"));
+        } catch (java.sql.SQLException e) {
+            subReport.setUserVoteType(null);
+        }
+
+        try {
+            subReport.setParentTitle(rs.getString("parent_title"));
+        } catch (java.sql.SQLException e) {
+            subReport.setParentTitle(null);
+        }
+
         return subReport;
     };
+
+    @Override
+    public Optional<SubReport> findByIdWithLocation(Long subReportId, Long currentUserId) {
+        String sql = "select sr.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
+                   + "u.name as author_name, u.image_url as author_image_url, "
+                   + "r.title as parent_title, "
+                   + "(select count(*) from comment c where c.sub_report_id = sr.sub_report_id) as comment_count, "
+                   + "v.vote_type as user_vote_type "
+                   + "from sub_report sr "
+                   + "join location l on sr.location_id = l.location_id "
+                   + "join report r on sr.report_id = r.report_id "
+                   + "left join `user` u on u.user_id = sr.user_id "
+                   + "left join vote v on v.sub_report_id = sr.sub_report_id and v.user_id = ? "
+                   + "where sr.sub_report_id = ?";
+        List<SubReport> results = jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, currentUserId, subReportId);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
 
     @Override
     public List<SubReport> findByReportId(Long reportId) {
         String sql = "select sr.*, l.longitude, l.latitude, l.address as loc_address, l.city, "
                    + "u.name as author_name, u.image_url as author_image_url, "
-                   // Comments tie to either a report or a sub-report through the
-                   // dual-FK comment table; here only the sub-report side counts.
-                   + "(select count(*) from comment c where c.sub_report_id = sr.sub_report_id) as comment_count "
+                   + "r.title as parent_title, "
+                   + "(select count(*) from comment c where c.sub_report_id = sr.sub_report_id) as comment_count, "
+                   + "null as user_vote_type "
                    + "from sub_report sr "
                    + "join location l on sr.location_id = l.location_id "
-                   // `user` is backticked because it is a keyword in several engines.
+                   + "join report r on sr.report_id = r.report_id "
                    + "left join `user` u on u.user_id = sr.user_id "
                    + "where sr.report_id = ? "
-                   // Oldest first: an incident thread reads as it unfolded.
                    + "order by sr.created_at asc";
         return jdbcTemplate.query(sql, ROW_MAPPER_WITH_LOCATION, reportId);
     }

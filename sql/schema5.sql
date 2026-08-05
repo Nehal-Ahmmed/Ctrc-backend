@@ -1,12 +1,4 @@
--- CTRC schema5
--- evidence type, report status, vote triggers
--- Run this once in MySQL Workbench on the ctrc database.
-
 set sql_safe_updates = 0;
-
--- ---------------------------------------------------------------------------
--- STEP 1 : new columns
--- ---------------------------------------------------------------------------
 
 alter table report
   add column evidence_type varchar(20) not null default 'seen',
@@ -15,10 +7,6 @@ alter table report
 alter table sub_report
   add column evidence_type varchar(20) not null default 'heard',
   add column category varchar(50) null;
-
--- ---------------------------------------------------------------------------
--- STEP 2 : how many upvotes a report needs before it counts as verified
--- ---------------------------------------------------------------------------
 
 drop function if exists fn_required_votes;
 
@@ -36,10 +24,6 @@ begin
 end //
 
 delimiter ;
-
--- ---------------------------------------------------------------------------
--- STEP 3 : fix the rows that are already in the database
--- ---------------------------------------------------------------------------
 
 update sub_report s
   join report r on r.report_id = s.report_id
@@ -64,10 +48,6 @@ update report
                   when upvote_count >= fn_required_votes(evidence_type) then 'verified'
                   else 'unverified'
                 end;
-
--- ---------------------------------------------------------------------------
--- STEP 4 : keep vote counts, status and expiry in sync automatically
--- ---------------------------------------------------------------------------
 
 drop trigger if exists trg_vote_insert;
 drop trigger if exists trg_vote_delete;
@@ -137,10 +117,6 @@ end //
 
 delimiter ;
 
--- ---------------------------------------------------------------------------
--- STEP 5 : nearby reports, used by the link-or-create prompt
--- ---------------------------------------------------------------------------
-
 drop procedure if exists sp_nearby_reports;
 
 delimiter //
@@ -166,10 +142,6 @@ begin
 end //
 
 delimiter ;
-
--- ---------------------------------------------------------------------------
--- STEP 6 : check that everything landed
--- ---------------------------------------------------------------------------
 
 select report_id, title, category, evidence_type, status,
        upvote_count, downvote_count

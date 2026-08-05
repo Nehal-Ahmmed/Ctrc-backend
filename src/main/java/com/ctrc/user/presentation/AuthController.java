@@ -28,7 +28,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> signup(@Valid @RequestBody SignupRequest request) {
         System.out.println("🟢 Received Signup request for email: " + request.getEmail());
         User user = userService.signup(request);
-        // We set password to null in response to avoid exposing it to the client
+
         user.setPassword(null);
         String dummyToken = "dummy-token-for-" + user.getEmail();
         AuthResponse response = new AuthResponse(dummyToken, user);
@@ -39,7 +39,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         System.out.println("🟢 Received Login request for email: " + request.getEmail());
         User user = userService.login(request);
-        // We set password to null in response to avoid exposing it to the client
+
         user.setPassword(null);
         String dummyToken = "dummy-token-for-" + user.getEmail();
         AuthResponse response = new AuthResponse(dummyToken, user);
